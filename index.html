@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>拍拍亮起來 - iPad 大面積觸控因果遊戲</title>
+    <!-- Tailwind CSS for modern responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none; /* Block default pinch/zoom/scroll gestures on iPad */
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            background-color: #000000;
+        }
+
+        /* Pulsing hint ring animation for dark screen */
+        @keyframes pulseBorder {
+            0% { box-shadow: inset 0 0 20px rgba(255, 238, 0, 0.2); }
+            50% { box-shadow: inset 0 0 70px rgba(255, 238, 0, 0.7); }
+            100% { box-shadow: inset 0 0 20px rgba(255, 238, 0, 0.2); }
+        }
+
+        .dark-border-pulse {
+            animation: pulseBorder 2s infinite ease-in-out;
+        }
+
+        /* Big glowing text for high contrast VI visibility */
+        .text-glow-yellow {
+            text-shadow: 0 0 30px rgba(255, 238, 0, 0.9), 0 0 60px rgba(255, 200, 0, 0.7);
+        }
+
+        .text-glow-cyan {
+            text-shadow: 0 0 30px rgba(0, 240, 255, 0.9), 0 0 60px rgba(0, 180, 255, 0.7);
+        }
+
+        /* Modal backdrop for teacher settings */
+        .modal-bg {
+            background-color: rgba(0, 0, 0, 0.88);
+            backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body class="bg-black text-white relative flex flex-col justify-between h-screen w-screen overflow-hidden">
+
+    <!-- Fullscreen Render Canvas -->
+    <canvas id="lightCanvas" class="absolute inset-0 w-full h-full z-0 block cursor-pointer"></canvas>
+
+    <!-- Top HUD Overlay -->
+    <div class="relative z-10 p-4 flex justify-between items-center pointer-events-none select-none">
+        <!-- Reward Stars Counter -->
+        <div class="flex items-center space-x-3 bg-slate-900/90 px-5 py-2.5 rounded-full border-3 border-yellow-400 shadow-2xl pointer-events-auto">
+            <span class="text-yellow-400 text-3xl animate-bounce">⭐</span>
+            <span id="starCount" class="text-4xl font-black text-yellow-300">0</span>
+            <span class="text-base font-bold text-slate-200 ml-1">次開燈</span>
+        </div>
+
+        <!-- Dynamic Main Instruction Banner -->
+        <div id="promptBanner" class="bg-amber-500 text-slate-950 border-4 border-yellow-200 px-8 py-3 rounded-3xl text-2xl sm:text-4xl font-black shadow-2xl max-w-xl text-center transition-all duration-300 transform scale-100">
+            請拍拍螢幕把電燈打開！ 💡
+        </div>
+
+        <!-- Teacher Settings Lock Button (Requires 1.2s long press) -->
+        <button id="settingsBtn" class="pointer-events-auto bg-slate-800 hover:bg-slate-700 text-slate-100 p-3.5 rounded-2xl border-2 border-slate-500 flex items-center justify-center space-x-2 active:scale-95 transition-all shadow-xl">
+            <svg class="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            <span class="text-xs text-slate-300 font-bold block">長按設定</span>
+        </button>
+    </div>
+
+    <!-- Center Big Visual Icon Hint (When Screen is Dark) -->
+    <div id="darkStateOverlay" class="absolute inset-0 z-5 flex flex-col justify-center items-center pointer-events-none select-none">
+        <div class="w-48 h-48 sm:w-64 sm:h-64 rounded-full bg-yellow-500/10 border-4 border-dashed border-yellow-400/40 flex items-center justify-center animate-pulse mb-6">
+            <span class="text-7xl sm:text-9xl opacity-70 filter drop-shadow">✋</span>
+        </div>
+        <p class="text-2xl sm:text-3xl font-bold text-yellow-300/80 bg-black/60 px-6 py-2 rounded-full border border-yellow-500/30">
+            用力用手掌拍拍螢幕！
+        </p>
+    </div>
+
+    <!-- Teacher Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-50 modal-bg flex justify-center items-center p-4">
+        <div class="bg-slate-900 border-4 border-yellow-400 rounded-3xl max-w-xl w-full p-6 text-white space-y-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <!-- Header -->
+            <div class="flex justify-between items-center border-b border-slate-700 pb-4">
+                <h2 class="text-2xl font-bold text-yellow-400 flex items-center space-x-2">
+                    <span>⚙️</span> <span>因果學習與特教調適設定</span>
+                </h2>
+                <button id="closeSettingsBtn" class="bg-red-600 hover:bg-red-500 text-white font-bold px-5 py-2 rounded-xl text-lg shadow-md active:scale-95 transition-all">關閉選單</button>
+            </div>
+
+            <!-- 1. Trigger Area Mode -->
+            <div class="space-y-2">
+                <label class="block text-lg font-bold text-yellow-300">1. 螢幕觸控感應區域：</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button class="area-mode-btn p-3 rounded-xl border-2 font-bold text-left transition-all border-yellow-400 bg-amber-950 text-yellow-200" data-area="full">
+                        ✋ 全螢幕隨意拍按<br><span class="text-xs font-normal text-slate-300">(最簡單：手掌按壓任意處即開燈)</span>
+                    </button>
+                    <button class="area-mode-btn p-3 rounded-xl border-2 border-slate-700 bg-slate-800 text-slate-300 font-bold text-left transition-all" data-area="center">
+                        🎯 中央大燈泡區域<br><span class="text-xs font-normal text-slate-300">(中等：拍擊螢幕中央圓圈)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. High Contrast Light Colors -->
+            <div class="space-y-2">
+                <label class="block text-lg font-bold text-yellow-300">2. 開燈視覺色彩 (適合弱視學生)：</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button class="color-theme-btn p-3 rounded-xl border-2 border-yellow-400 bg-yellow-400 text-slate-950 font-black text-center" data-theme="yellow">
+                        純黃亮光 💡
+                    </button>
+                    <button class="color-theme-btn p-3 rounded-xl border-2 border-slate-700 bg-white text-slate-950 font-black text-center" data-theme="white">
+                        高亮純白 ☀️
+                    </button>
+                    <button class="color-theme-btn p-3 rounded-xl border-2 border-slate-700 bg-cyan-400 text-slate-950 font-black text-center" data-theme="cyan">
+                        螢光藍光 ⚡
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. Light Stay Duration before Auto-reset -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <label class="text-lg font-bold text-yellow-300">3. 亮燈維持時間 (自動重置關燈)：</label>
+                    <span id="durationVal" class="text-yellow-400 font-bold text-xl">4 秒</span>
+                </div>
+                <input type="range" id="durationSlider" min="2" max="10" value="4" class="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-yellow-400">
+                <p class="text-xs text-slate-400">學生拍亮後，螢幕保持明亮並播放音樂的時間。</p>
+            </div>
+
+            <!-- 4. Audio Sound Effect & Voice Feedback -->
+            <div class="space-y-3 pt-2 border-t border-slate-700">
+                <div class="flex justify-between items-center">
+                    <span class="text-lg font-bold text-yellow-300">4. 開燈提示音效 (叮！與彩虹音)：</span>
+                    <button id="soundToggleBtn" class="bg-green-600 text-white font-bold px-4 py-2 rounded-xl">已開啟</button>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-lg font-bold text-yellow-300">5. 廣東話語音鼓勵提示：</span>
+                    <button id="voiceToggleBtn" class="bg-green-600 text-white font-bold px-4 py-2 rounded-xl">已開啟</button>
+                </div>
+            </div>
+
+            <!-- Manual Reset Test Button -->
+            <div class="pt-2 border-t border-slate-700">
+                <button id="resetScoreBtn" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl border border-slate-600">
+                    🔄 重置開燈計數器 (目前：0)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Web Audio Synthesizer Class
+         * Creates rich "Ding!", fanfares, and light switch sounds without external dependencies.
+         */
+        class SoundSynth {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // High-pitched clear "Ding!" chime for instant touch feedback
+            playDingSound() {
+                if (!this.enabled) return;
+                this.init();
+
+                const now = this.ctx.currentTime;
+                
+                // Primary Bell Tone (C6 - 1046.5Hz)
+                const osc1 = this.ctx.createOscillator();
+                const gain1 = this.ctx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(1046.50, now);
+                osc1.frequency.exponentialRampToValueAtTime(1318.51, now + 0.1); // Ramp up to E6
+
+                gain1.gain.setValueAtTime(0.5, now);
+                gain1.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+                osc1.connect(gain1);
+                gain1.connect(this.ctx.destination);
+                osc1.start(now);
+                osc1.stop(now + 1.2);
+
+                // High Harmonic Shimmer Tone (G6 - 1567.98Hz)
+                const osc2 = this.ctx.createOscillator();
+                const gain2 = this.ctx.createGain();
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(1567.98, now);
+                
+                gain2.gain.setValueAtTime(0.3, now);
+                gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+                osc2.connect(gain2);
+                gain2.connect(this.ctx.destination);
+                osc2.start(now);
+                osc2.stop(now + 0.8);
+            }
+
+            // Cheerful celebratory fanfare played during lit state
+            playLightFanfare() {
+                if (!this.enabled) return;
+                this.init();
+
+                // Musical Arpeggio Notes (C5, E5, G5, C6, E6)
+                const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => {
+                        if (!this.ctx) return;
+                        const now = this.ctx.currentTime;
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now);
+
+                        gain.gain.setValueAtTime(0.35, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+
+                        osc.start(now);
+                        osc.stop(now + 0.5);
+                    }, idx * 100);
+                });
+            }
+
+            // Soft "Click" sound when turning off the light to reset
+            playSwitchOffSound() {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+        }
+
+        /**
+         * Cantonese Speech Guidance Engine using Web Speech API
+         */
+        class SpeechEngine {
+            constructor() {
+                this.enabled = true;
+            }
+
+            speak(text) {
+                if (!this.enabled || !('speechSynthesis' in window)) return;
+                window.speechSynthesis.cancel(); // Cancel any ongoing speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-HK'; // Cantonese
+                utterance.rate = 0.85;   // Slightly slower pace for ID students
+                utterance.pitch = 1.15;  // Cheerful pitch
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Canvas Setup & Elements
+        const canvas = document.getElementById('lightCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const audio = new SoundSynth();
+        const speech = new SpeechEngine();
+
+        // Game State Object
+        const state = {
+            isLit: false,             // false = Dark Mode, true = Lit Mode
+            triggerArea: 'full',      // 'full': Tap anywhere, 'center': Tap center bulb target
+            theme: 'yellow',          // 'yellow', 'white', 'cyan'
+            stayDuration: 4,          // Seconds the light stays on
+            starCount: 0,
+            soundEnabled: true,
+            voiceEnabled: true,
+
+            // Animation timing
+            litStartTime: 0,
+            lightAlpha: 0.0,          // 0.0 (dark) to 1.0 (fully lit)
+            bulbPulse: 0.0,
+
+            // Particle system for glowing light bursts
+            particles: [],
+            rays: []
+        };
+
+        // High contrast light themes config
+        const themes = {
+            yellow: {
+                bgGradInner: '#FFFFFF',
+                bgGradOuter: '#FFD700',
+                glowColor: 'rgba(255, 215, 0, 0.9)',
+                particleColor: '#FFF566',
+                textColor: '#78350F', // Dark amber text for yellow background
+                bannerBg: 'bg-yellow-400 border-yellow-100 text-slate-950',
+                bannerTextLit: '好棒！電燈亮了！💡',
+                speechText: '好棒！電燈亮了！'
+            },
+            white: {
+                bgGradInner: '#FFFFFF',
+                bgGradOuter: '#E2E8F0',
+                glowColor: 'rgba(255, 255, 255, 0.95)',
+                particleColor: '#38BDF8',
+                textColor: '#0F172A',
+                bannerBg: 'bg-white border-slate-300 text-slate-950',
+                bannerTextLit: '太厲害了！好漂亮的光亮！☀️',
+                speechText: '太厲害了！好漂亮的光亮！'
+            },
+            cyan: {
+                bgGradInner: '#E0F2FE',
+                bgGradOuter: '#00F0FF',
+                glowColor: 'rgba(0, 240, 255, 0.95)',
+                particleColor: '#00F0FF',
+                textColor: '#0C4A6E',
+                bannerBg: 'bg-cyan-400 border-cyan-100 text-slate-950',
+                bannerTextLit: '哇！閃亮亮藍光！⚡',
+                speechText: '哇！閃亮亮藍光！'
+            }
+        };
+
+        // Resize Canvas to fit screen size perfectly
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Particle Generator for Light Burst
+        function createLightParticles(centerX, centerY) {
+            state.particles = [];
+            state.rays = [];
+
+            const themeColor = themes[state.theme].particleColor;
+
+            // Explosive sparkle particles
+            for (let i = 0; i < 45; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 8 + 3;
+                state.particles.push({
+                    x: centerX,
+                    y: centerY,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: Math.random() * 12 + 6,
+                    color: themeColor,
+                    alpha: 1.0
+                });
+            }
+
+            // Light rays stretching out from center
+            for (let i = 0; i < 12; i++) {
+                state.rays.push({
+                    angle: (Math.PI * 2 / 12) * i,
+                    length: Math.max(canvas.width, canvas.height) * 1.2,
+                    width: Math.random() * 0.15 + 0.05,
+                    alpha: 0.8
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = state.particles.length - 1; i >= 0; i--) {
+                let p = state.particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx *= 0.96;
+                p.vy *= 0.96;
+                p.alpha -= 0.015;
+                if (p.alpha <= 0) {
+                    state.particles.splice(i, 1);
+                }
+            }
+        }
+
+        // Main Canvas Render Loop
+        let lastTime = performance.now();
+
+        function render(now) {
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+
+            const currentTheme = themes[state.theme];
+
+            // Smooth background brightness transition
+            if (state.isLit) {
+                state.lightAlpha = Math.min(state.lightAlpha + dt * 4.0, 1.0); // Fast light up
+            } else {
+                state.lightAlpha = Math.max(state.lightAlpha - dt * 2.0, 0.0); // Smooth dimming
+            }
+
+            // Clear Background
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Render Lit State (High Contrast Lighting)
+            if (state.lightAlpha > 0) {
+                ctx.save();
+                ctx.globalAlpha = state.lightAlpha;
+
+                // Radial High-Contrast Light Gradient Background
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const maxRadius = Math.max(canvas.width, canvas.height) * 0.9;
+
+                const grad = ctx.createRadialGradient(centerX, centerY, 50, centerX, centerY, maxRadius);
+                grad.addColorStop(0, currentTheme.bgGradInner);
+                grad.addColorStop(0.7, currentTheme.bgGradOuter);
+                grad.addColorStop(1, '#000000');
+
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Render Light Rays
+                state.rays.forEach(r => {
+                    ctx.save();
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate(r.angle + (now * 0.0005));
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.arc(0, 0, r.length, -r.width / 2, r.width / 2);
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                // Render Sparkling Particles
+                updateParticles();
+                state.particles.forEach(p => {
+                    ctx.save();
+                    ctx.globalAlpha = p.alpha * state.lightAlpha;
+                    ctx.fillStyle = p.color;
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = 15;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                // Draw Big Glowing Light Bulb Character in center
+                state.bulbPulse += dt * 3;
+                const bulbScale = 1 + Math.sin(state.bulbPulse) * 0.05;
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.scale(bulbScale, bulbScale);
+                ctx.font = `${Math.min(canvas.width, canvas.height) * 0.25}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = currentTheme.glowColor;
+                ctx.shadowBlur = 50;
+                ctx.fillText('💡', 0, 0);
+                ctx.restore();
+
+                ctx.restore();
+            }
+
+            // Render Center Target Guide Ring when in "Center Target" Mode & Dark
+            if (state.triggerArea === 'center' && !state.isLit) {
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const targetRadius = Math.min(canvas.width, canvas.height) * 0.22;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, targetRadius, 0, Math.PI * 2);
+                ctx.lineWidth = 10;
+                ctx.strokeStyle = '#FFD700';
+                ctx.setLineDash([20, 15]);
+                ctx.stroke();
+
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Check timer to auto-reset back to dark state
+            if (state.isLit) {
+                const elapsed = (now - state.litStartTime) / 1000;
+                if (elapsed >= state.stayDuration) {
+                    resetToDarkState();
+                }
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        /**
+         * Trigger Light On Event (Called when student slaps/taps screen)
+         */
+        function triggerLightOn(touchX, touchY) {
+            if (state.isLit) return; // Ignore repeated taps while already lit
+
+            // If Center Target mode is enabled, verify touch is inside target circle
+            if (state.triggerArea === 'center') {
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const targetRadius = Math.min(canvas.width, canvas.height) * 0.28; // Generous hitbox for ID students
+                const dx = touchX - centerX;
+                const dy = touchY - centerY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > targetRadius) return; // Missed target
+            }
+
+            // 1. Update Game State
+            state.isLit = true;
+            state.litStartTime = performance.now();
+            state.starCount++;
+            document.getElementById('starCount').innerText = state.starCount;
+
+            // 2. Hide dark prompt overlay
+            document.getElementById('darkStateOverlay').classList.add('hidden');
+
+            // 3. Update Banner UI
+            const banner = document.getElementById('promptBanner');
+            const currentTheme = themes[state.theme];
+            banner.className = `border-4 px-8 py-3 rounded-3xl text-2xl sm:text-4xl font-black shadow-2xl max-w-xl text-center transition-all duration-300 transform scale-105 ${currentTheme.bannerBg}`;
+            banner.innerText = currentTheme.bannerTextLit;
+
+            // 4. Create visual explosion particles
+            createLightParticles(touchX || canvas.width / 2, touchY || canvas.height / 2);
+
+            // 5. Sound & Cantonese Speech Feedback
+            audio.playDingSound();
+            setTimeout(() => audio.playLightFanfare(), 250);
+            speech.speak(currentTheme.speechText);
+        }
+
+        /**
+         * Reset Game to Dark Screen (Wait for next slap)
+         */
+        function resetToDarkState() {
+            if (!state.isLit) return;
+
+            state.isLit = false;
+            audio.playSwitchOffSound();
+
+            // Show dark state hint overlay
+            document.getElementById('darkStateOverlay').classList.remove('hidden');
+
+            // Reset banner text
+            const banner = document.getElementById('promptBanner');
+            banner.className = "bg-amber-500 text-slate-950 border-4 border-yellow-200 px-8 py-3 rounded-3xl text-2xl sm:text-4xl font-black shadow-2xl max-w-xl text-center transition-all duration-300 transform scale-100";
+            banner.innerText = "請拍拍螢幕把電燈打開！ 💡";
+
+            // Speech prompt to encourage next slap
+            setTimeout(() => {
+                if (!state.isLit) {
+                    speech.speak("電燈關了，再拍拍螢幕吧！");
+                }
+            }, 600);
+        }
+
+        // Pointer / Touch Event Listeners optimized for iPad multi-touch / palm taps
+        window.addEventListener('pointerdown', (e) => {
+            // Prevent triggering if teacher clicked settings button or inside settings modal
+            if (e.target.closest('#settingsBtn') || e.target.closest('#settingsModal')) return;
+
+            audio.init(); // Initialize Web Audio context on first user gesture
+            triggerLightOn(e.clientX, e.clientY);
+        });
+
+        // Additional listener for Touch events to handle broad palm contact
+        window.addEventListener('touchstart', (e) => {
+            if (e.target.closest('#settingsBtn') || e.target.closest('#settingsModal')) return;
+
+            audio.init();
+            if (e.touches && e.touches.length > 0) {
+                const t = e.touches[0];
+                triggerLightOn(t.clientX, t.clientY);
+            }
+        }, { passive: true });
+
+        // Teacher Settings Security Lock (Long press for 1.2s to open)
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
+        let longPressTimer = null;
+
+        settingsBtn.addEventListener('pointerdown', () => {
+            longPressTimer = setTimeout(() => {
+                settingsModal.classList.remove('hidden');
+                speech.speak("開啟教師設定選單");
+            }, 1200); // 1.2 seconds long press lock
+        });
+
+        settingsBtn.addEventListener('pointerup', () => clearTimeout(longPressTimer));
+        settingsBtn.addEventListener('pointerleave', () => clearTimeout(longPressTimer));
+
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+
+        // Setting Option 1: Trigger Area
+        document.querySelectorAll('.area-mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.area-mode-btn').forEach(b => {
+                    b.classList.remove('border-yellow-400', 'bg-amber-950', 'text-yellow-200');
+                    b.classList.add('border-slate-700', 'bg-slate-800', 'text-slate-300');
+                });
+                btn.classList.add('border-yellow-400', 'bg-amber-950', 'text-yellow-200');
+                state.triggerArea = btn.dataset.area;
+            });
+        });
+
+        // Setting Option 2: High Contrast Light Color Themes
+        document.querySelectorAll('.color-theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                state.theme = btn.dataset.theme;
+                if (state.isLit) {
+                    createLightParticles(canvas.width / 2, canvas.height / 2);
+                }
+            });
+        });
+
+        // Setting Option 3: Stay Duration Slider
+        const durationSlider = document.getElementById('durationSlider');
+        durationSlider.addEventListener('input', (e) => {
+            state.stayDuration = parseInt(e.target.value);
+            document.getElementById('durationVal').innerText = `${state.stayDuration} 秒`;
+        });
+
+        // Setting Option 4 & 5: Sound & Voice Toggles
+        const soundToggleBtn = document.getElementById('soundToggleBtn');
+        soundToggleBtn.addEventListener('click', () => {
+            state.soundEnabled = !state.soundEnabled;
+            audio.enabled = state.soundEnabled;
+            soundToggleBtn.innerText = state.soundEnabled ? "已開啟" : "已關閉";
+            soundToggleBtn.className = state.soundEnabled ? "bg-green-600 text-white font-bold px-4 py-2 rounded-xl" : "bg-red-600 text-white font-bold px-4 py-2 rounded-xl";
+        });
+
+        const voiceToggleBtn = document.getElementById('voiceToggleBtn');
+        voiceToggleBtn.addEventListener('click', () => {
+            state.voiceEnabled = !state.voiceEnabled;
+            speech.enabled = state.voiceEnabled;
+            voiceToggleBtn.innerText = state.voiceEnabled ? "已開啟" : "已關閉";
+            voiceToggleBtn.className = state.voiceEnabled ? "bg-green-600 text-white font-bold px-4 py-2 rounded-xl" : "bg-red-600 text-white font-bold px-4 py-2 rounded-xl";
+        });
+
+        // Reset Star Counter
+        const resetScoreBtn = document.getElementById('resetScoreBtn');
+        resetScoreBtn.addEventListener('click', () => {
+            state.starCount = 0;
+            document.getElementById('starCount').innerText = "0";
+            resetScoreBtn.innerText = "🔄 重置開燈計數器 (目前：0)";
+        });
+
+        // Start Canvas Render Loop
+        requestAnimationFrame(render);
+
+        // Initial Speech Welcome Prompt on Load
+        setTimeout(() => {
+            speech.speak("歡迎玩拍拍開燈遊戲！請拍拍螢幕把電燈打開！");
+        }, 800);
+    </script>
+</body>
+</html>
