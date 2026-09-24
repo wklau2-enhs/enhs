@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>北風和太陽 - 語文課業</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none; /* 防止學生長按選取文字 */
+    }
+    body {
+      margin: 0;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: #000000; /* 高對比純黑背景，適合視障學生 */
+      color: #FFFF00; /* 鮮黃色文字 */
+      font-family: "PingFang HK", "Heiti TC", "Microsoft JhengHei", sans-serif;
+      text-align: center;
+      cursor: pointer;
+    }
+    .text-box {
+      font-size: 3.5rem; /* 大字型 */
+      font-weight: bold;
+      line-height: 1.6;
+      padding: 40px;
+      border: 4px solid #FFFF00;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 1000px;
+      background-color: #111111;
+      word-break: break-word;
+    }
+    .hint {
+      position: absolute;
+      bottom: 20px;
+      font-size: 1.5rem;
+      color: #888888;
+    }
+    /* 當正在播放語音時的背景閃爍反饋 */
+    .playing {
+      background-color: #002244;
+      border-color: #00FFFF;
+      color: #00FFFF;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="display-text" class="text-box">請按紅色拍掣開始故事</div>
+  <div class="hint">（按拍掣或點擊螢幕播放下一句）</div>
+
+  <script>
+    // 課文分句段落
+    const story = [
+      "北風和太陽都說自己的本領強，他們決定比賽，看誰能使路人脫去衣服。",
+      "比賽開始了，首先北風用力地吹，吹走路人的帽子和圍巾，可是路人用力抓著衣服，北風沒能令路人脫去衣服。",
+      "然後太陽慢慢地散發熱力，路人熱得滿頭大汗，於是把大衣、毛衣一件件地脫了下來，最後太陽勝利了。",
+      "這個故事提醒我們要用對方法呢。"
+    ];
+
+    let currentIndex = -1;
+    const textBox = document.getElementById('display-text');
+
+    function playNext() {
+      // 進位至下一句，若講完則重新循環
+      currentIndex = (currentIndex + 1) % story.length;
+      const currentSentence = story[currentIndex];
+
+      // 更新畫面文字
+      textBox.textContent = currentSentence;
+      textBox.classList.add('playing');
+
+      // 取消正在進行的語音
+      window.speechSynthesis.cancel();
+
+      // 建立廣東話語音物件
+      const utterance = new SpeechSynthesisUtterance(currentSentence);
+      utterance.lang = 'zh-HK'; // 設定為廣東話
+      utterance.rate = 0.8;    // 稍微放慢語速，方便智障學生聆聽理解
+
+      // 語音播放完畢後恢復視覺效果
+      utterance.onend = function() {
+        textBox.classList.remove('playing');
+      };
+
+      // 播放語音
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // 監聽鍵盤按下事件（紅色拍掣通常模擬鍵盤輸入，如 Space / Enter）
+    window.addEventListener('keydown', function(e) {
+      playNext();
+    });
+
+    // 監聽點擊/觸控事件（亦支援老師直接點擊 iPad 螢幕操作）
+    window.addEventListener('click', function() {
+      playNext();
+    });
+  </script>
+</body>
+</html>
