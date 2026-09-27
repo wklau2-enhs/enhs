@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>STEAM 觸覺與聲光因果連結教具 - 拍掣鼓聲伴奏版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* 高對比與視障專用視覺樣式 */
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            overflow: hidden;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* 超大高亮度 LED 發光效果 */
+        .led-off {
+            background: radial-gradient(circle, #2a2a2a 0%, #111111 70%, #000000 100%);
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.9), 0 0 0 10px #222;
+            border: 8px solid #333333;
+        }
+
+        .led-on-yellow {
+            background: radial-gradient(circle, #ffffff 0%, #ffea00 40%, #ff9100 80%, #ff5500 100%);
+            box-shadow: 0 0 140px #ffea00, 0 0 220px #ffea00, inset 0 0 50px #ffffff;
+            border: 8px solid #ffffff;
+            animation: pulse-glow 0.25s infinite alternate;
+        }
+
+        .led-on-red {
+            background: radial-gradient(circle, #ffffff 0%, #ff0055 40%, #cc0000 80%, #660000 100%);
+            box-shadow: 0 0 140px #ff0055, 0 0 220px #ff0055, inset 0 0 50px #ffffff;
+            border: 8px solid #ffffff;
+            animation: pulse-glow 0.25s infinite alternate;
+        }
+
+        .led-on-green {
+            background: radial-gradient(circle, #ffffff 0%, #00ff66 40%, #009933 80%, #003311 100%);
+            box-shadow: 0 0 140px #00ff66, 0 0 220px #00ff66, inset 0 0 50px #ffffff;
+            border: 8px solid #ffffff;
+            animation: pulse-glow 0.25s infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            0% { transform: scale(0.97); opacity: 0.9; }
+            100% { transform: scale(1.05); opacity: 1; }
+        }
+
+        /* 擊鼓震動搖擺動畫 */
+        .drum-hit-anim {
+            animation: drum-bounce 0.18s ease-out;
+        }
+
+        @keyframes drum-bounce {
+            0% { transform: scale(0.88) rotate(-6deg); }
+            50% { transform: scale(1.22) rotate(6deg); }
+            100% { transform: scale(1.0) rotate(0deg); }
+        }
+
+        /* 搖鈴搖擺動畫 */
+        .bell-shake {
+            animation: ring-bell 0.35s infinite ease-in-out alternate;
+            transform-origin: top center;
+        }
+
+        @keyframes ring-bell {
+            0% { transform: rotate(-18deg) scale(1.1); }
+            100% { transform: rotate(18deg) scale(1.1); }
+        }
+
+        /* 音樂合奏動態飄浮音符 */
+        .music-note {
+            position: absolute;
+            font-size: 3rem;
+            color: #ffea00;
+            text-shadow: 0 0 15px rgba(255, 234, 0, 0.9);
+            animation: float-note 1.2s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes float-note {
+            0% { transform: translateY(0) scale(0.6) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-160px) scale(1.5) rotate(30deg); opacity: 0; }
+        }
+
+        /* 超大觸控/顯示區域 */
+        .interactive-area {
+            cursor: pointer;
+            transition: all 0.08s ease-out;
+        }
+
+        .interactive-area:active {
+            transform: scale(0.93);
+        }
+
+        /* 視障高對比文字提示 */
+        .hi-contrast-text {
+            text-shadow: 0 0 20px #000, 0 0 10px #000;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between p-4 relative">
+
+    <!-- 頂部老師控制列（微縮隱藏，不分散學生注意力） -->
+    <header class="flex justify-between items-center z-50 bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-3 text-white">
+        <div class="flex items-center gap-3">
+            <span class="bg-yellow-500 text-black font-extrabold px-3 py-1 rounded-lg text-sm tracking-wide">STEAM 節奏伴奏教具</span>
+            <h1 class="text-lg font-bold hidden sm:inline text-gray-200">拍掣單擊鼓聲伴奏遊戲</h1>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <!-- 嘗試計數器（方便老師紀錄 IEP 或隨堂評估） -->
+            <div class="bg-black/60 px-4 py-1.5 rounded-xl border border-gray-700 flex items-center gap-2">
+                <i class="fa-solid fa-drum text-yellow-400"></i>
+                <span class="text-xs text-gray-400">擊鼓次數:</span>
+                <span id="trial-counter" class="text-2xl font-extrabold text-yellow-400">0</span>
+                <button id="btn-reset-count" title="重置計數" class="ml-2 text-xs text-gray-400 hover:text-white p-1">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- 控制面板選單按鈕 -->
+            <button id="btn-toggle-settings" class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-xl text-sm flex items-center gap-2 border border-gray-700 transition">
+                <i class="fa-solid fa-sliders"></i>
+                <span>老師設定</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主要感官刺激區（iPad 畫面中心） -->
+    <main class="flex-1 flex flex-col items-center justify-center relative my-2">
+        
+        <!-- 全螢幕閃爍背景（強化高組與弱視視覺刺激） -->
+        <div id="flash-bg" class="absolute inset-0 rounded-3xl opacity-0 transition-opacity duration-100 pointer-events-none"></div>
+
+        <!-- 音符漂浮容器 -->
+        <div id="music-notes-container" class="absolute inset-0 overflow-hidden pointer-events-none z-20"></div>
+
+        <!-- 中心超大燈光/按鈕視覺標的 -->
+        <div id="interactive-target" class="interactive-area relative w-72 h-72 sm:w-96 sm:h-96 rounded-full flex flex-col items-center justify-center transition-all duration-100 led-off z-10">
+            <!-- 燈光/鼓聲圖示 -->
+            <div id="target-icon-container" class="text-gray-500 transition-all duration-150 mb-2">
+                <i id="target-icon" class="fa-solid fa-drum text-7xl sm:text-9xl"></i>
+            </div>
+            
+            <!-- 大字體狀態文字（結合語文/狀態辨識） -->
+            <div id="target-text" class="text-3xl sm:text-5xl font-black tracking-widest text-yellow-400 hi-contrast-text text-center px-4">
+                🥁 拍一下打一下鼓
+            </div>
+            <div id="sub-status-text" class="text-sm sm:text-lg font-bold text-gray-400 mt-2 tracking-wider">
+                【 鼓聲伴奏準備中 Ready 】
+            </div>
+        </div>
+
+        <!-- 底部提示文字（供學生/老師參考） -->
+        <div class="mt-6 text-center z-10">
+            <p id="instruction-hint" class="text-lg sm:text-2xl font-bold text-yellow-300">
+                <i class="fa-solid fa-hand-pointer text-yellow-400 mr-2 animate-bounce"></i>【拍一下拍掣】響起單下鼓聲，一起為音樂伴奏！
+            </p>
+        </div>
+    </main>
+
+    <!-- 狀態標示列（方便高組學生辨識 On / Off 物理狀態） -->
+    <footer class="grid grid-cols-2 gap-4 z-50">
+        <div id="status-card-on" class="bg-gray-900/90 border-2 border-gray-800 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-200">
+            <div class="w-5 h-5 rounded-full bg-gray-700 id-dot-on"></div>
+            <span class="text-lg sm:text-xl font-black text-gray-500 status-label-on">擊鼓觸發 (Hit)</span>
+        </div>
+        <div id="status-card-off" class="bg-gray-900/90 border-2 border-green-500/80 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-200">
+            <div class="w-5 h-5 rounded-full bg-green-500 id-dot-off animate-pulse"></div>
+            <span class="text-lg sm:text-xl font-black text-green-400 status-label-off">伴奏準備 (Ready)</span>
+        </div>
+    </footer>
+
+    <!-- 老師設定面板 Modal (預設隱藏) -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-700 rounded-3xl max-w-lg w-full p-6 space-y-6 text-gray-100 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 class="text-xl font-bold text-yellow-400 flex items-center gap-2">
+                    <i class="fa-solid fa-gear"></i> 特殊教育教具調適設定
+                </h3>
+                <button id="btn-close-settings" class="text-gray-400 hover:text-white text-2xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-sm">
+                <!-- 音效類型 -->
+                <div>
+                    <label class="block font-bold text-yellow-400 mb-2 text-base">1. 伴奏鼓聲 / 樂器音效類型</label>
+                    <select id="select-sound-type" class="w-full bg-gray-800 border-2 border-yellow-500 rounded-xl p-3 text-white text-base focus:outline-none focus:border-yellow-400">
+                        <optgroup label="🥁 單擊鼓聲伴奏 (拍一下打一下鼓)">
+                            <option value="drum_snare" selected>🥁 爵士小鼓擊打 (Snare Drum - Single Hit)</option>
+                            <option value="drum_bass">🥁 渾厚大鼓重音 (Bass / Kick Drum)</option>
+                            <option value="drum_woodblock">🪵 清脆木魚/響板 (Woodblock / Castanet)</option>
+                            <option value="drum_bongo">🪘 邦哥手鼓節奏 (Bongo Drum Hit)</option>
+                            <option value="drum_cymbal">🪙 亮麗銅鈸/鈴鼓 (Cymbal / Tambourine)</option>
+                            <option value="drum_combo">🥁 鼓組雙音重擊 (Kick + Snare Combo)</option>
+                        </optgroup>
+                        <optgroup label="🔔 搖鈴與持續聲響">
+                            <option value="bell_jingle">🔔 叮噹搖鈴伴奏 (Jingle Bells Shake)</option>
+                            <option value="bell_handbell">🔔 清脆樂器手搖鈴 (Resonant Handbell Tone)</option>
+                            <option value="bell_windchime">✨ 夢幻風鈴搖動 (Sparkling Wind Chimes)</option>
+                        </optgroup>
+                        <optgroup label="⚡ 其他警示聲與語音">
+                            <option value="buzzer">⚡ 低電壓蜂鳴器音效 (Buzzer Tone)</option>
+                            <option value="speech">🗣️ 粵語語音報讀：「咚！一起拍掣打鼓！」</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- 觸發模式設定 -->
+                <div>
+                    <label class="block font-bold text-gray-300 mb-2">2. 按壓觸發方式（依學生機能限制調整）</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" data-trig="toggle" class="btn-trig-mode bg-yellow-600 text-white font-bold p-3 rounded-xl border border-yellow-400 text-center">
+                            單擊拍打伴奏<br><span class="text-xs font-normal opacity-90">拍一下響一下鼓聲（預設伴奏）</span>
+                        </button>
+                        <button type="button" data-trig="hold" class="btn-trig-mode bg-gray-800 text-gray-300 font-bold p-3 rounded-xl border border-gray-700 text-center">
+                            按住連續通電 (Hold)<br><span class="text-xs font-normal opacity-90">按住持續發聲，放開斷電</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 多感官輸出模式（全失明/弱視調適） -->
+                <div>
+                    <label class="block font-bold text-gray-300 mb-2">3. 感官回饋模式（多感官調適）</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" data-mode="both" class="btn-sensory-mode bg-yellow-600 text-white font-bold p-2.5 rounded-xl border border-yellow-400 text-center text-xs">
+                            <i class="fa-solid fa-bolt block text-base mb-1"></i>聲光雙重
+                        </button>
+                        <button type="button" data-mode="sound" class="btn-sensory-mode bg-gray-800 text-gray-300 font-bold p-2.5 rounded-xl border border-gray-700 text-center text-xs">
+                            <i class="fa-solid fa-volume-high block text-base mb-1"></i>純聲音(全失明)
+                        </button>
+                        <button type="button" data-mode="light" class="btn-sensory-mode bg-gray-800 text-gray-300 font-bold p-2.5 rounded-xl border border-gray-700 text-center text-xs">
+                            <i class="fa-solid fa-lightbulb block text-base mb-1"></i>純光亮(弱視)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 燈光色彩 -->
+                <div>
+                    <label class="block font-bold text-gray-300 mb-2">4. 高對比 LED 色彩（弱視視覺調適）</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" data-color="yellow" class="btn-color-select bg-yellow-500 text-black font-bold p-2 rounded-lg text-center text-xs">高亮黃</button>
+                        <button type="button" data-color="red" class="btn-color-select bg-red-600 text-white font-bold p-2 rounded-lg text-center text-xs opacity-60">警示紅</button>
+                        <button type="button" data-color="green" class="btn-color-select bg-green-500 text-black font-bold p-2 rounded-lg text-center text-xs opacity-60">螢光綠</button>
+                    </div>
+                </div>
+
+                <!-- 鍵盤/拍掣鍵位提示 -->
+                <div class="bg-black/40 p-3 rounded-xl border border-gray-800 text-xs text-gray-400">
+                    <p class="font-bold text-gray-300 mb-1"><i class="fa-solid fa-keyboard mr-1"></i> 外接拍掣 (Switch) 支援說明：</p>
+                    <p>iPad 或電腦連接藍芽拍掣後，按壓會發送 <code class="text-yellow-400 bg-gray-800 px-1 py-0.5 rounded">Space (空格鍵)</code> 或 <code class="text-yellow-400 bg-gray-800 px-1 py-0.5 rounded">Enter</code>，本系統已自動無縫支援！</p>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button id="btn-save-settings" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold py-3 rounded-2xl text-base transition">
+                    完成並開始擊鼓伴奏
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 教具狀態管理
+        const state = {
+            isOn: false,
+            triggerMode: 'toggle',   // 單擊拍打伴奏
+            sensoryMode: 'both',     // 'both', 'sound', 'light'
+            soundType: 'drum_snare', // 預設單擊爵士小鼓
+            ledColor: 'yellow',      // 'yellow', 'red', 'green'
+            trialCount: 0,
+            audioCtx: null,
+            activeOscillators: []
+        };
+
+        // DOM 元素引用
+        const interactiveTarget = document.getElementById('interactive-target');
+        const targetIcon = document.getElementById('target-icon');
+        const targetIconContainer = document.getElementById('target-icon-container');
+        const targetText = document.getElementById('target-text');
+        const subStatusText = document.getElementById('sub-status-text');
+        const flashBg = document.getElementById('flash-bg');
+        const trialCounterEl = document.getElementById('trial-counter');
+        const btnResetCount = document.getElementById('btn-reset-count');
+        const instructionHint = document.getElementById('instruction-hint');
+        const musicNotesContainer = document.getElementById('music-notes-container');
+
+        // Footer 狀態卡片
+        const statusCardOn = document.getElementById('status-card-on');
+        const statusCardOff = document.getElementById('status-card-off');
+
+        // Modal 控制元素
+        const settingsModal = document.getElementById('settings-modal');
+        const btnToggleSettings = document.getElementById('btn-toggle-settings');
+        const btnCloseSettings = document.getElementById('btn-close-settings');
+        const btnSaveSettings = document.getElementById('btn-save-settings');
+        const selectSoundType = document.getElementById('select-sound-type');
+
+        // 初始化 Web Audio API
+        function initAudioContext() {
+            if (!state.audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                state.audioCtx = new AudioContext();
+            }
+            if (state.audioCtx.state === 'suspended') {
+                state.audioCtx.resume();
+            }
+        }
+
+        // 停止當前聲音
+        function stopAllAudio() {
+            state.activeOscillators.forEach(osc => {
+                try { osc.stop(); osc.disconnect(); } catch(e) {}
+            });
+            state.activeOscillators = [];
+
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        // 產生動態音符與打擊動畫
+        function spawnMusicNoteAnimation() {
+            if (!musicNotesContainer) return;
+            const noteSymbols = ['🥁', '🎵', '🎶', '💥', '✨'];
+            const note = document.createElement('div');
+            note.className = 'music-note';
+            note.textContent = noteSymbols[Math.floor(Math.random() * noteSymbols.length)];
+            
+            // 隨機發射位置
+            const randomX = Math.random() * 60 + 20; // 20% to 80%
+            note.style.left = `${randomX}%`;
+            note.style.bottom = '40%';
+            
+            musicNotesContainer.appendChild(note);
+
+            setTimeout(() => {
+                if (note.parentNode) {
+                    note.parentNode.removeChild(note);
+                }
+            }, 1200);
+        }
+
+        // 播放單下鼓聲擊打 (Web Audio API 即時合成單擊鼓音)
+        function playSingleDrumHit(drumType) {
+            if (!state.audioCtx) return;
+            const ctx = state.audioCtx;
+
+            if (drumType === 'drum_snare' || drumType === 'drum_combo') {
+                // 1. 爵士小鼓 (Snare) - 鼓膜基音 + 金屬響弦雜音
+                const osc = ctx.createOscillator();
+                const oscGain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(180, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(45, ctx.currentTime + 0.1);
+                oscGain.gain.setValueAtTime(0.8, ctx.currentTime);
+                oscGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+
+                osc.connect(oscGain);
+                oscGain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+
+                // 響弦白雜音包絡
+                const bufferSize = ctx.sampleRate * 0.18;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 1000;
+
+                const noiseGain = ctx.createGain();
+                noiseGain.gain.setValueAtTime(0.6, ctx.currentTime);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(ctx.destination);
+                noise.start();
+            }
+
+            if (drumType === 'drum_bass' || drumType === 'drum_combo') {
+                // 2. 渾厚大鼓 (Bass / Kick Drum) - 低頻衝擊波
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(160, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.18);
+
+                gain.gain.setValueAtTime(1.0, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.22);
+            }
+
+            if (drumType === 'drum_woodblock') {
+                // 3. 木魚 / 響板 (Woodblock) - 高頻極短清脆敲擊
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.05);
+
+                gain.gain.setValueAtTime(0.9, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.05);
+            }
+
+            if (drumType === 'drum_bongo') {
+                // 4. 邦哥手鼓 (Bongo) - 中頻皮革敲擊聲
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(340, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(160, ctx.currentTime + 0.12);
+
+                gain.gain.setValueAtTime(0.85, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.14);
+            }
+
+            if (drumType === 'drum_cymbal') {
+                // 5. 亮麗銅鈸 / 鈴鼓 (Cymbal) - 高頻高通濾波金屬敲擊
+                const bufferSize = ctx.sampleRate * 0.25;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 5500;
+
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                gain.connect(ctx.destination);
+                noise.start();
+            }
+
+            // 產生音符/鼓棒視覺動畫
+            spawnMusicNoteAnimation();
+        }
+
+        // 播放搖鈴與蜂鳴器/語音
+        function playBellOrOtherSound() {
+            if (!state.audioCtx) return;
+            const ctx = state.audioCtx;
+
+            if (state.soundType === 'bell_jingle') {
+                const freqs = [2350, 2720, 3180, 3620];
+                freqs.forEach(freq => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.25);
+                });
+            } else if (state.soundType === 'bell_handbell') {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1046.5, ctx.currentTime);
+                gain.gain.setValueAtTime(0.4, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.8);
+            } else if (state.soundType === 'buzzer') {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, ctx.currentTime);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.2);
+            } else if (state.soundType === 'speech') {
+                if ('speechSynthesis' in window) {
+                    const msg = new SpeechSynthesisUtterance('咚！拍掣打鼓！');
+                    msg.lang = 'zh-HK';
+                    window.speechSynthesis.speak(msg);
+                }
+            }
+
+            spawnMusicNoteAnimation();
+        }
+
+        // 觸發擊鼓/通電 (Turn ON)
+        function triggerDrumHit() {
+            state.isOn = true;
+            initAudioContext();
+
+            // 累加計數器
+            state.trialCount++;
+            trialCounterEl.textContent = state.trialCount;
+
+            const isDrum = state.soundType.startsWith('drum_');
+
+            // 1. 視覺更新 (Visual Feedback)
+            if (state.sensoryMode === 'both' || state.sensoryMode === 'light') {
+                interactiveTarget.className = `interactive-area relative w-72 h-72 sm:w-96 sm:h-96 rounded-full flex flex-col items-center justify-center transition-all duration-100 led-on-${state.ledColor} z-10 drum-hit-anim`;
+                
+                // 閃爍背景
+                flashBg.className = `absolute inset-0 rounded-3xl opacity-50 pointer-events-none transition-opacity duration-100 ${
+                    state.ledColor === 'yellow' ? 'bg-yellow-400' : state.ledColor === 'red' ? 'bg-red-500' : 'bg-green-400'
+                }`;
+
+                targetIconContainer.className = "text-black drop-shadow-lg mb-2 transform scale-125 transition-all duration-100";
+                
+                if (isDrum) {
+                    targetIcon.className = "fa-solid fa-drum text-7xl sm:text-9xl";
+                    targetText.textContent = "🥁 咚！單擊鼓聲伴奏";
+                } else {
+                    targetIcon.className = "fa-solid fa-bell text-7xl sm:text-9xl";
+                    targetText.textContent = "🔔 叮！伴奏聲響";
+                }
+
+                targetText.className = "text-3xl sm:text-5xl font-black tracking-widest text-black hi-contrast-text text-center px-4 animate-pulse";
+                subStatusText.textContent = "【 擊鼓伴奏發聲 Hit 】";
+                subStatusText.className = "text-base sm:text-xl font-black text-gray-900 bg-white/90 px-4 py-0.5 rounded-full mt-2";
+            } else {
+                // 純聲音模式
+                targetText.textContent = isDrum ? "🥁 咚！鼓聲擊打" : "伴奏發聲中！";
+                targetText.className = "text-4xl sm:text-6xl font-black tracking-widest text-yellow-400 hi-contrast-text text-center px-4";
+                subStatusText.textContent = "【 擊鼓伴奏發聲 Hit 】";
+                subStatusText.className = "text-base sm:text-xl font-bold text-yellow-300 mt-2";
+            }
+
+            // 更新 Footer 狀態卡片
+            statusCardOn.className = "bg-yellow-500 border-2 border-yellow-300 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-150 shadow-lg scale-105";
+            statusCardOn.querySelector('.id-dot-on').className = "w-5 h-5 rounded-full bg-black id-dot-on animate-ping";
+            statusCardOn.querySelector('.status-label-on').className = "text-lg sm:text-xl font-black text-black status-label-on";
+
+            statusCardOff.className = "bg-gray-900/60 border-2 border-gray-800 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-150 opacity-50";
+            statusCardOff.querySelector('.id-dot-off').className = "w-5 h-5 rounded-full bg-gray-700 id-dot-off";
+            statusCardOff.querySelector('.status-label-off').className = "text-lg sm:text-xl font-black text-gray-500 status-label-off";
+
+            // 2. 聽覺更新 (Auditory Feedback)
+            if (state.sensoryMode === 'both' || state.sensoryMode === 'sound') {
+                if (isDrum) {
+                    playSingleDrumHit(state.soundType);
+                } else {
+                    playBellOrOtherSound();
+                }
+            }
+
+            // 單擊伴奏於 180 毫秒後自動復位，方便連續快節奏伴奏
+            setTimeout(() => {
+                resetToReadyState();
+            }, 180);
+        }
+
+        // 恢復 Ready 狀態
+        function resetToReadyState() {
+            state.isOn = false;
+
+            interactiveTarget.className = "interactive-area relative w-72 h-72 sm:w-96 sm:h-96 rounded-full flex flex-col items-center justify-center transition-all duration-150 led-off z-10";
+            flashBg.className = "absolute inset-0 rounded-3xl opacity-0 transition-opacity duration-100 pointer-events-none";
+
+            targetIconContainer.className = "text-gray-500 transition-all duration-200 mb-2";
+            
+            if (state.soundType.startsWith('drum_')) {
+                targetIcon.className = "fa-solid fa-drum text-7xl sm:text-9xl";
+                targetText.textContent = "🥁 拍一下打一下鼓";
+                subStatusText.textContent = "【 鼓聲伴奏準備中 Ready 】";
+            } else {
+                targetIcon.className = "fa-solid fa-bell text-7xl sm:text-9xl";
+                targetText.textContent = "拍掣伴奏遊戲";
+                subStatusText.textContent = "【 伴奏準備中 Ready 】";
+            }
+
+            targetText.className = "text-3xl sm:text-5xl font-black tracking-widest text-yellow-400 hi-contrast-text text-center px-4";
+            subStatusText.className = "text-sm sm:text-lg font-bold text-gray-400 mt-2 tracking-wider";
+
+            // 更新 Footer 狀態卡片
+            statusCardOn.className = "bg-gray-900/90 border-2 border-gray-800 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-200";
+            statusCardOn.querySelector('.id-dot-on').className = "w-5 h-5 rounded-full bg-gray-700 id-dot-on";
+            statusCardOn.querySelector('.status-label-on').className = "text-lg sm:text-xl font-black text-gray-500 status-label-on";
+
+            statusCardOff.className = "bg-gray-900/90 border-2 border-green-500/80 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-200";
+            statusCardOff.querySelector('.id-dot-off').className = "w-5 h-5 rounded-full bg-green-500 id-dot-off animate-pulse";
+            statusCardOff.querySelector('.status-label-off').className = "text-lg sm:text-xl font-black text-green-400 status-label-off";
+        }
+
+        // 處理按壓事件 (Press Down)
+        function handleTriggerStart(e) {
+            if (e) e.preventDefault();
+            triggerDrumHit();
+        }
+
+        function handleTriggerEnd(e) {
+            if (e) e.preventDefault();
+        }
+
+        // 綁定觸控與滑鼠
+        interactiveTarget.addEventListener('pointerdown', handleTriggerStart);
+
+        // 綁定鍵盤/iPad 藍芽拍掣 (Space 或 Enter)
+        let isKeyDown = false;
+        window.addEventListener('keydown', (e) => {
+            if (!settingsModal.classList.contains('hidden')) return;
+
+            if (e.code === 'Space' || e.code === 'Enter' || e.key === ' ' || e.key === 'Enter') {
+                if (!isKeyDown) {
+                    isKeyDown = true;
+                    handleTriggerStart(e);
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter' || e.key === ' ' || e.key === 'Enter') {
+                isKeyDown = false;
+            }
+        });
+
+        // 重置計數器
+        btnResetCount.addEventListener('click', (e) => {
+            e.stopPropagation();
+            state.trialCount = 0;
+            trialCounterEl.textContent = '0';
+        });
+
+        // 設定 Modal 開關
+        btnToggleSettings.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+        });
+
+        btnCloseSettings.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+
+        btnSaveSettings.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+
+        // 切換按壓模式
+        document.querySelectorAll('.btn-trig-mode').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const trig = e.currentTarget.dataset.trig;
+                state.triggerMode = trig;
+
+                document.querySelectorAll('.btn-trig-mode').forEach(b => {
+                    b.className = "btn-trig-mode bg-gray-800 text-gray-300 font-bold p-3 rounded-xl border border-gray-700 text-center";
+                });
+                e.currentTarget.className = "btn-trig-mode bg-yellow-600 text-white font-bold p-3 rounded-xl border border-yellow-400 text-center";
+            });
+        });
+
+        // 切換多感官模式
+        document.querySelectorAll('.btn-sensory-mode').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const mode = e.currentTarget.dataset.mode;
+                state.sensoryMode = mode;
+
+                document.querySelectorAll('.btn-sensory-mode').forEach(b => {
+                    b.className = "btn-sensory-mode bg-gray-800 text-gray-300 font-bold p-2.5 rounded-xl border border-gray-700 text-center text-xs";
+                });
+                e.currentTarget.className = "btn-sensory-mode bg-yellow-600 text-white font-bold p-2.5 rounded-xl border border-yellow-400 text-center text-xs";
+            });
+        });
+
+        // 選擇聲音類型
+        selectSoundType.addEventListener('change', (e) => {
+            state.soundType = e.target.value;
+            resetToReadyState();
+        });
+
+        // 選擇 LED 色彩
+        document.querySelectorAll('.btn-color-select').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const color = e.currentTarget.dataset.color;
+                state.ledColor = color;
+
+                document.querySelectorAll('.btn-color-select').forEach(b => {
+                    b.classList.add('opacity-60');
+                });
+                e.currentTarget.classList.remove('opacity-60');
+            });
+        });
+
+        window.onload = function() {
+            console.log("STEAM 拍掣單擊鼓聲伴奏教具載入完成！Ready for Drum Accompaniment Interaction.");
+        };
+    </script>
+</body>
+</html>
