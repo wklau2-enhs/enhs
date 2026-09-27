@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>STEAM 觸覺與聲光因果連結教具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* 高對比與視障專用視覺樣式 */
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            overflow: hidden;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* 超大高亮度 LED 發光效果 */
+        .led-off {
+            background: radial-gradient(circle, #2a2a2a 0%, #111111 70%, #000000 100%);
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.9), 0 0 0 10px #222;
+            border: 8px solid #333333;
+        }
+
+        .led-on-yellow {
+            background: radial-gradient(circle, #ffffff 0%, #ffea00 40%, #ff9100 80%, #ff5500 100%);
+            box-shadow: 0 0 120px #ffea00, 0 0 200px #ffea00, inset 0 0 40px #ffffff;
+            border: 8px solid #ffffff;
+            animation: pulse-glow 0.6s infinite alternate;
+        }
+
+        .led-on-red {
+            background: radial-gradient(circle, #ffffff 0%, #ff0055 40%, #cc0000 80%, #660000 100%);
+            box-shadow: 0 0 120px #ff0055, 0 0 200px #ff0055, inset 0 0 40px #ffffff;
+            border: 8px solid #ffffff;
+            animation: pulse-glow 0.5s infinite alternate;
+        }
+
+        .led-on-green {
+            background: radial-gradient(circle, #ffffff 0%, #00ff66 40%, #009933 80%, #003311 100%);
+            box-shadow: 0 0 120px #00ff66, 0 0 200px #00ff66, inset 0 0 40px #ffffff;
+            border: 8px solid #ffffff;
+            animation: pulse-glow 0.6s infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            0% { transform: scale(0.98); opacity: 0.95; }
+            100% { transform: scale(1.02); opacity: 1; }
+        }
+
+        /* 超大觸控/顯示區域 */
+        .interactive-area {
+            cursor: pointer;
+            transition: all 0.1s ease-out;
+        }
+
+        .interactive-area:active {
+            transform: scale(0.97);
+        }
+
+        /* 視障高對比文字提示 */
+        .hi-contrast-text {
+            text-shadow: 0 0 20px #000, 0 0 10px #000;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between p-4 relative">
+
+    <!-- 頂部老師控制列（微縮隱藏，不分散學生注意力） -->
+    <header class="flex justify-between items-center z-50 bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl p-3 text-white">
+        <div class="flex items-center gap-3">
+            <span class="bg-red-600 text-white font-bold px-3 py-1 rounded-lg text-sm tracking-wide">語文/STEAM 教具</span>
+            <h1 class="text-lg font-bold hidden sm:inline text-gray-200">拍掣因果連結遊戲</h1>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <!-- 嘗試計數器（方便老師紀錄 IEP 或隨堂評估） -->
+            <div class="bg-black/60 px-4 py-1.5 rounded-xl border border-gray-700 flex items-center gap-2">
+                <i class="fa-solid fa-calculator text-yellow-400"></i>
+                <span class="text-xs text-gray-400">通電次數:</span>
+                <span id="trial-counter" class="text-xl font-extrabold text-yellow-400">0</span>
+                <button id="btn-reset-count" title="重置計數" class="ml-2 text-xs text-gray-500 hover:text-white">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- 控制面板選單按鈕 -->
+            <button id="btn-toggle-settings" class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-xl text-sm flex items-center gap-2 border border-gray-700 transition">
+                <i class="fa-solid fa-sliders"></i>
+                <span>老師設定</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主要感官刺激區（iPad 畫面中心） -->
+    <main class="flex-1 flex flex-col items-center justify-center relative my-4">
+        
+        <!-- 全螢幕閃爍背景（強化高組與弱視視覺刺激） -->
+        <div id="flash-bg" class="absolute inset-0 rounded-3xl opacity-0 transition-opacity duration-100 pointer-events-none"></div>
+
+        <!-- 中心超大燈光/按鈕視覺標的 -->
+        <div id="interactive-target" class="interactive-area relative w-72 h-72 sm:w-96 sm:h-96 rounded-full flex flex-col items-center justify-center transition-all duration-150 led-off z-10">
+            <!-- 燈光/蜂鳴器圖示 -->
+            <div id="target-icon-container" class="text-gray-600 transition-all duration-200 mb-2">
+                <i id="target-icon" class="fa-solid fa-lightbulb text-7xl sm:text-9xl"></i>
+            </div>
+            
+            <!-- 大字體狀態文字（結合語文/狀態辨識） -->
+            <div id="target-text" class="text-3xl sm:text-5xl font-black tracking-widest text-gray-500 hi-contrast-text text-center px-4">
+                按下拍掣
+            </div>
+            <div id="sub-status-text" class="text-sm sm:text-lg font-bold text-gray-600 mt-2 tracking-wider">
+                【 斷路 Off 】
+            </div>
+        </div>
+
+        <!-- 底部提示文字（供學生/老師參考） -->
+        <div class="mt-6 text-center z-10">
+            <p id="instruction-hint" class="text-lg sm:text-xl font-medium text-gray-400">
+                <i class="fa-solid fa-hand-pointer text-yellow-400 mr-2"></i>【拍一下拍掣】接通電路，維持亮燈與發聲！
+            </p>
+        </div>
+    </main>
+
+    <!-- 狀態標示列（方便高組學生辨識 On / Off 物理狀態） -->
+    <footer class="grid grid-cols-2 gap-4 z-50">
+        <div id="status-card-on" class="bg-gray-900/90 border-2 border-gray-800 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-200">
+            <div class="w-5 h-5 rounded-full bg-gray-700 id-dot-on"></div>
+            <span class="text-lg sm:text-xl font-black text-gray-500 status-label-on">接通電路 (On)</span>
+        </div>
+        <div id="status-card-off" class="bg-gray-900/90 border-2 border-green-500/80 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-200">
+            <div class="w-5 h-5 rounded-full bg-green-500 id-dot-off animate-pulse"></div>
+            <span class="text-lg sm:text-xl font-black text-green-400 status-label-off">斷開電路 (Off)</span>
+        </div>
+    </footer>
+
+    <!-- 老師設定面板 Modal (預設隱藏) -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-700 rounded-3xl max-w-lg w-full p-6 space-y-6 text-gray-100 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 class="text-xl font-bold text-yellow-400 flex items-center gap-2">
+                    <i class="fa-solid fa-gear"></i> 特殊教育教具調適設定
+                </h3>
+                <button id="btn-close-settings" class="text-gray-400 hover:text-white text-2xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-sm">
+                <!-- 觸發模式設定 -->
+                <div>
+                    <label class="block font-bold text-gray-300 mb-2">1. 按壓觸發方式（依學生機能限制調整）</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" data-trig="toggle" class="btn-trig-mode bg-yellow-600 text-white font-bold p-3 rounded-xl border border-yellow-400 text-center">
+                            拍一下維持 (Latch)<br><span class="text-xs font-normal opacity-80">拍一下開燈保持，再拍關閉（預設）</span>
+                        </button>
+                        <button type="button" data-trig="hold" class="btn-trig-mode bg-gray-800 text-gray-300 font-bold p-3 rounded-xl border border-gray-700 text-center">
+                            按住通電 (Hold)<br><span class="text-xs font-normal opacity-80">按住才亮，放開即斷電</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 多感官輸出模式（全失明/弱視調適） -->
+                <div>
+                    <label class="block font-bold text-gray-300 mb-2">2. 感官回饋模式（多感官調適）</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" data-mode="both" class="btn-sensory-mode bg-yellow-600 text-white font-bold p-2.5 rounded-xl border border-yellow-400 text-center text-xs">
+                            <i class="fa-solid fa-bolt block text-base mb-1"></i>聲光雙重
+                        </button>
+                        <button type="button" data-mode="sound" class="btn-sensory-mode bg-gray-800 text-gray-300 font-bold p-2.5 rounded-xl border border-gray-700 text-center text-xs">
+                            <i class="fa-solid fa-volume-high block text-base mb-1"></i>純聲音(全失明)
+                        </button>
+                        <button type="button" data-mode="light" class="btn-sensory-mode bg-gray-800 text-gray-300 font-bold p-2.5 rounded-xl border border-gray-700 text-center text-xs">
+                            <i class="fa-solid fa-lightbulb block text-base mb-1"></i>純光亮(弱視)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 音效類型 -->
+                <div>
+                    <label class="block font-bold text-gray-300 mb-2">3. 聲音種類（聽覺刺激類型）</label>
+                    <select id="select-sound-type" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-yellow-400">
+                        <option value="buzzer">低電壓蜂鳴器音效 (Buzzer Tone)</option>
+                        <option value="fanfare">歡樂慶祝音樂 (Pleasant Music Chime)</option>
+                        <option value="speech">粵語語音報讀：「亮了/響了！」(Voice Prompt)</option>
+                    </select>
+                </div>
+
+                <!-- 燈光色彩 -->
+                <div>
+                    <label class="block font-bold text-gray-300 mb-2">4. 高對比 LED 色彩（弱視視覺調適）</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" data-color="yellow" class="btn-color-select bg-yellow-500 text-black font-bold p-2 rounded-lg text-center text-xs">高亮黃</button>
+                        <button type="button" data-color="red" class="btn-color-select bg-red-600 text-white font-bold p-2 rounded-lg text-center text-xs opacity-60">警示紅</button>
+                        <button type="button" data-color="green" class="btn-color-select bg-green-500 text-black font-bold p-2 rounded-lg text-center text-xs opacity-60">螢光綠</button>
+                    </div>
+                </div>
+
+                <!-- 鍵盤/拍掣鍵位提示 -->
+                <div class="bg-black/40 p-3 rounded-xl border border-gray-800 text-xs text-gray-400">
+                    <p class="font-bold text-gray-300 mb-1"><i class="fa-solid fa-keyboard mr-1"></i> 外接拍掣 (Switch) 支援說明：</p>
+                    <p>iPad 連接藍芽拍掣後，按壓通常會發送 <code class="text-yellow-400 bg-gray-800 px-1 py-0.5 rounded">Space (空格鍵)</code> 或 <code class="text-yellow-400 bg-gray-800 px-1 py-0.5 rounded">Enter</code>。本 App 已全面自動支援！</p>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button id="btn-save-settings" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold py-3 rounded-2xl text-base transition">
+                    完成並開始練習
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 教具狀態管理
+        const state = {
+            isOn: false,
+            triggerMode: 'toggle', // 預設改為 'toggle'（拍一下維持開燈）
+            sensoryMode: 'both', // 'both', 'sound', 'light'
+            soundType: 'buzzer', // 'buzzer', 'fanfare', 'speech'
+            ledColor: 'yellow',  // 'yellow', 'red', 'green'
+            trialCount: 0,
+            audioCtx: null,
+            activeOscillators: [],
+            speechUtterance: null
+        };
+
+        // DOM 元素引用
+        const interactiveTarget = document.getElementById('interactive-target');
+        const targetIcon = document.getElementById('target-icon');
+        const targetIconContainer = document.getElementById('target-icon-container');
+        const targetText = document.getElementById('target-text');
+        const subStatusText = document.getElementById('sub-status-text');
+        const flashBg = document.getElementById('flash-bg');
+        const trialCounterEl = document.getElementById('trial-counter');
+        const btnResetCount = document.getElementById('btn-reset-count');
+        const instructionHint = document.getElementById('instruction-hint');
+
+        // Footer 狀態卡片
+        const statusCardOn = document.getElementById('status-card-on');
+        const statusCardOff = document.getElementById('status-card-off');
+
+        // Modal 控制元素
+        const settingsModal = document.getElementById('settings-modal');
+        const btnToggleSettings = document.getElementById('btn-toggle-settings');
+        const btnCloseSettings = document.getElementById('btn-close-settings');
+        const btnSaveSettings = document.getElementById('btn-save-settings');
+        const selectSoundType = document.getElementById('select-sound-type');
+
+        // 初始化 Web Audio API (確保在 iPad 上由使用者第一次點擊/拍打時啟動)
+        function initAudioContext() {
+            if (!state.audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                state.audioCtx = new AudioContext();
+            }
+            if (state.audioCtx.state === 'suspended') {
+                state.audioCtx.resume();
+            }
+        }
+
+        // 停止當前所有聲音
+        function stopAllAudio() {
+            state.activeOscillators.forEach(osc => {
+                try { osc.stop(); osc.disconnect(); } catch(e) {}
+            });
+            state.activeOscillators = [];
+
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        // 播放低電壓蜂鳴器音效 (Buzzer)
+        function playBuzzerSound() {
+            if (!state.audioCtx) return;
+            stopAllAudio();
+
+            const osc = state.audioCtx.createOscillator();
+            const gain = state.audioCtx.createGain();
+
+            // 模擬蜂鳴器方波或鋸齒波 (440Hz - 880Hz 低頻/清涼聲音)
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(520, state.audioCtx.currentTime); // 520Hz 扎實蜂鳴聲
+
+            gain.gain.setValueAtTime(0.3, state.audioCtx.currentTime);
+
+            osc.connect(gain);
+            gain.connect(state.audioCtx.destination);
+
+            osc.start();
+            state.activeOscillators.push(osc);
+        }
+
+        // 播放歡樂慶祝音樂/和弦 (Chime)
+        function playFanfareSound() {
+            if (!state.audioCtx) return;
+            stopAllAudio();
+
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 Major Chord
+            notes.forEach((freq, idx) => {
+                const osc = state.audioCtx.createOscillator();
+                const gain = state.audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, state.audioCtx.currentTime + idx * 0.05);
+
+                gain.gain.setValueAtTime(0.15, state.audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, state.audioCtx.currentTime + 1.2);
+
+                osc.connect(gain);
+                gain.connect(state.audioCtx.destination);
+
+                osc.start(state.audioCtx.currentTime + idx * 0.05);
+                state.activeOscillators.push(osc);
+            });
+        }
+
+        // 播放粵語/中文語音（配合語文科學習）
+        function playSpeechPrompt(text) {
+            if (!('speechSynthesis' in window)) return;
+            stopAllAudio();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-HK'; // 粵語
+            utterance.rate = 0.9;     // 稍微放慢語速，方便嚴重智障學生理解
+            utterance.pitch = 1.2;    // 提高音調，增加親和力與吸引力
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 接通電路 (Turn ON)
+        function turnOn() {
+            if (state.isOn) return;
+            state.isOn = true;
+            initAudioContext();
+
+            // 累加計數
+            state.trialCount++;
+            trialCounterEl.textContent = state.trialCount;
+
+            // 1. 視覺更新 (Visual Feedback)
+            if (state.sensoryMode === 'both' || state.sensoryMode === 'light') {
+                interactiveTarget.className = `interactive-area relative w-72 h-72 sm:w-96 sm:h-96 rounded-full flex flex-col items-center justify-center transition-all duration-150 led-on-${state.ledColor} z-10`;
+                
+                // 發光背景
+                flashBg.className = `absolute inset-0 rounded-3xl opacity-40 pointer-events-none transition-opacity duration-100 ${
+                    state.ledColor === 'yellow' ? 'bg-yellow-400' : state.ledColor === 'red' ? 'bg-red-500' : 'bg-green-400'
+                }`;
+
+                targetIconContainer.className = "text-black drop-shadow-lg mb-2 transform scale-110 transition-all duration-200";
+                targetText.textContent = "亮燈囉！";
+                targetText.className = "text-4xl sm:text-6xl font-black tracking-widest text-black hi-contrast-text text-center px-4 animate-bounce";
+                subStatusText.textContent = "【 通電 On 】";
+                subStatusText.className = "text-base sm:text-xl font-black text-gray-900 bg-white/80 px-3 py-0.5 rounded-full mt-2";
+            } else {
+                // 純聲音模式（全失明學生調適）
+                targetText.textContent = "響囉！";
+                targetText.className = "text-4xl sm:text-6xl font-black tracking-widest text-yellow-400 hi-contrast-text text-center px-4";
+                subStatusText.textContent = "【 通電 On 】";
+                subStatusText.className = "text-base sm:text-xl font-bold text-yellow-300 mt-2";
+            }
+
+            // 更新底部 status 標示卡片
+            statusCardOn.className = "bg-yellow-500 border-2 border-yellow-300 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-200 shadow-lg scale-105";
+            statusCardOn.querySelector('.id-dot-on').className = "w-5 h-5 rounded-full bg-black id-dot-on animate-ping";
+            statusCardOn.querySelector('.status-label-on').className = "text-lg sm:text-xl font-black text-black status-label-on";
+
+            statusCardOff.className = "bg-gray-900/60 border-2 border-gray-800 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-200 opacity-50";
+            statusCardOff.querySelector('.id-dot-off').className = "w-5 h-5 rounded-full bg-gray-700 id-dot-off";
+            statusCardOff.querySelector('.status-label-off').className = "text-lg sm:text-xl font-black text-gray-500 status-label-off";
+
+            // 2. 聽覺更新 (Auditory Feedback)
+            if (state.sensoryMode === 'both' || state.sensoryMode === 'sound') {
+                if (state.soundType === 'buzzer') {
+                    playBuzzerSound();
+                } else if (state.soundType === 'fanfare') {
+                    playFanfareSound();
+                } else if (state.soundType === 'speech') {
+                    playSpeechPrompt("接通電路！好棒！");
+                }
+            }
+        }
+
+        // 斷開電路 (Turn OFF)
+        function turnOff() {
+            if (!state.isOn) return;
+            state.isOn = false;
+
+            stopAllAudio();
+
+            // 1. 視覺恢復 OFF 狀態
+            interactiveTarget.className = "interactive-area relative w-72 h-72 sm:w-96 sm:h-96 rounded-full flex flex-col items-center justify-center transition-all duration-150 led-off z-10";
+            flashBg.className = "absolute inset-0 rounded-3xl opacity-0 transition-opacity duration-100 pointer-events-none";
+
+            targetIconContainer.className = "text-gray-600 transition-all duration-200 mb-2";
+            targetText.textContent = "按下拍掣";
+            targetText.className = "text-3xl sm:text-5xl font-black tracking-widest text-gray-500 hi-contrast-text text-center px-4";
+            subStatusText.textContent = "【 斷路 Off 】";
+            subStatusText.className = "text-sm sm:text-lg font-bold text-gray-600 mt-2 tracking-wider";
+
+            // 更新 Footer 狀態卡片
+            statusCardOn.className = "bg-gray-900/90 border-2 border-gray-800 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-200";
+            statusCardOn.querySelector('.id-dot-on').className = "w-5 h-5 rounded-full bg-gray-700 id-dot-on";
+            statusCardOn.querySelector('.status-label-on').className = "text-lg sm:text-xl font-black text-gray-500 status-label-on";
+
+            statusCardOff.className = "bg-gray-900/90 border-2 border-green-500/80 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all duration-200";
+            statusCardOff.querySelector('.id-dot-off').className = "w-5 h-5 rounded-full bg-green-500 id-dot-off animate-pulse";
+            statusCardOff.querySelector('.status-label-off').className = "text-lg sm:text-xl font-black text-green-400 status-label-off";
+        }
+
+        // 觸發事件綁定（同時相容 iPad 螢幕觸控與藍芽外接開關掣）
+        
+        // 處理按壓開始 (Down Event)
+        function handleTriggerStart(e) {
+            if (e) e.preventDefault();
+            initAudioContext();
+
+            if (state.triggerMode === 'hold') {
+                turnOn();
+            } else if (state.triggerMode === 'toggle') {
+                if (state.isOn) {
+                    turnOff();
+                } else {
+                    turnOn();
+                }
+            }
+        }
+
+        // 處理按壓結束 (Up Event)
+        function handleTriggerEnd(e) {
+            if (e) e.preventDefault();
+            if (state.triggerMode === 'hold') {
+                turnOff();
+            }
+        }
+
+        // 綁定 iPad 觸控 / 滑鼠點擊
+        interactiveTarget.addEventListener('pointerdown', handleTriggerStart);
+        interactiveTarget.addEventListener('pointerup', handleTriggerEnd);
+        interactiveTarget.addEventListener('pointerleave', handleTriggerEnd);
+
+        // 綁定鍵盤/iPad 藍芽拍掣 Key Down & Key Up
+        // 藍芽 Swtich Control 最常用 Space (Spacebar) 與 Enter 鍵
+        let isKeyDown = false;
+        window.addEventListener('keydown', (e) => {
+            // 忽略設定彈窗開啟時的輸入
+            if (!settingsModal.classList.contains('hidden')) return;
+
+            if (e.code === 'Space' || e.code === 'Enter' || e.key === ' ' || e.key === 'Enter') {
+                if (!isKeyDown) {
+                    isKeyDown = true;
+                    handleTriggerStart(e);
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter' || e.key === ' ' || e.key === 'Enter') {
+                isKeyDown = false;
+                handleTriggerEnd(e);
+            }
+        });
+
+        // 重置計數器
+        btnResetCount.addEventListener('click', (e) => {
+            e.stopPropagation();
+            state.trialCount = 0;
+            trialCounterEl.textContent = '0';
+        });
+
+        // 打開與關閉設定 Modal
+        btnToggleSettings.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+        });
+
+        btnCloseSettings.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+
+        btnSaveSettings.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+
+        // 切換按壓模式 (Hold vs Toggle)
+        document.querySelectorAll('.btn-trig-mode').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const trig = e.currentTarget.dataset.trig;
+                state.triggerMode = trig;
+
+                document.querySelectorAll('.btn-trig-mode').forEach(b => {
+                    b.className = "btn-trig-mode bg-gray-800 text-gray-300 font-bold p-3 rounded-xl border border-gray-700 text-center";
+                });
+                e.currentTarget.className = "btn-trig-mode bg-yellow-600 text-white font-bold p-3 rounded-xl border border-yellow-400 text-center";
+                
+                instructionHint.innerHTML = trig === 'toggle' 
+                    ? '<i class="fa-solid fa-hand-pointer text-yellow-400 mr-2"></i>【拍一下拍掣】接通電路，維持亮燈與發聲！'
+                    : '<i class="fa-solid fa-hand-pointer text-yellow-400 mr-2"></i>【按住拍掣】通電，【鬆開】斷電';
+            });
+        });
+
+        // 切換多感官模式 (Both vs Sound vs Light)
+        document.querySelectorAll('.btn-sensory-mode').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const mode = e.currentTarget.dataset.mode;
+                state.sensoryMode = mode;
+
+                document.querySelectorAll('.btn-sensory-mode').forEach(b => {
+                    b.className = "btn-sensory-mode bg-gray-800 text-gray-300 font-bold p-2.5 rounded-xl border border-gray-700 text-center text-xs";
+                });
+                e.currentTarget.className = "btn-sensory-mode bg-yellow-600 text-white font-bold p-2.5 rounded-xl border border-yellow-400 text-center text-xs";
+            });
+        });
+
+        // 選擇聲音類型
+        selectSoundType.addEventListener('change', (e) => {
+            state.soundType = e.target.value;
+        });
+
+        // 選擇高對比 LED 色彩
+        document.querySelectorAll('.btn-color-select').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const color = e.currentTarget.dataset.color;
+                state.ledColor = color;
+
+                document.querySelectorAll('.btn-color-select').forEach(b => {
+                    b.classList.add('opacity-60');
+                });
+                e.currentTarget.classList.remove('opacity-60');
+            });
+        });
+
+        // 頁面加載完成初始化
+        window.onload = function() {
+            console.log("STEAM 因果連結教具載入完成！Ready for Special Ed Switch Interaction.");
+        };
+    </script>
+</body>
+</html>
