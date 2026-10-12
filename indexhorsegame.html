@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小馬照顧大冒險與聲效拍掣</title>
+    <!-- Tailwind CSS for modern responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons for visual icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts for friendly rounded typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Mochiyom+One&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .font-rounded {
+            font-family: 'Mochiyom One', 'Noto Sans TC', cursive;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 25px rgba(245, 158, 11, 0.6); }
+            50% { transform: scale(1.04); box-shadow: 0 0 42px rgba(245, 158, 11, 0.95); }
+        }
+        .animate-pulse-glow {
+            animation: pulse-glow 1.8s infinite ease-in-out;
+        }
+        @keyframes horse-bounce {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-14px) rotate(3deg); }
+        }
+        .animate-horse-happy {
+            animation: horse-bounce 0.55s infinite ease-in-out;
+        }
+        @keyframes eat-chew {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08) rotate(-3deg); }
+        }
+        .animate-eating {
+            animation: eat-chew 0.22s infinite ease-in-out;
+        }
+        .switch-pressed {
+            transform: translateY(8px) scale(0.96) !important;
+            box-shadow: 0 2px 0 #b45309 !important;
+        }
+        .mud-spot {
+            transition: all 0.4s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-amber-50 min-h-screen flex flex-col text-slate-800 overflow-x-hidden">
+
+    <header class="bg-amber-400 border-b-4 border-amber-600 px-4 py-3 shadow-md">
+        <div class="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <span class="text-4xl animate-bounce">🐴</span>
+                <h1 class="text-2xl md:text-3xl font-black text-amber-950 font-rounded tracking-wide">小馬照顧大冒險</h1>
+            </div>
+            
+            <!-- Mode Switch Tabs -->
+            <div class="flex items-center space-x-2 bg-amber-200/90 p-1.5 rounded-2xl border-2 border-amber-500 shadow-inner">
+                <button id="tab-game" onclick="switchMode('game')" class="px-4 py-2 rounded-xl text-base md:text-lg font-bold transition flex items-center gap-2 bg-white text-amber-900 shadow cursor-pointer">
+                    <i class="fa-solid fa-gamepad text-amber-600"></i>
+                    <span>拍掣照顧小馬</span>
+                </button>
+                <button id="tab-soundboard" onclick="switchMode('soundboard')" class="px-4 py-2 rounded-xl text-base md:text-lg font-bold transition flex items-center gap-2 text-amber-800 hover:bg-amber-100 cursor-pointer">
+                    <i class="fa-solid fa-volume-high text-amber-600"></i>
+                    <span>自由聲效拍掣 (AAC)</span>
+                </button>
+            </div>
+
+            <!-- Voice & Settings Toolbar -->
+            <div class="flex items-center gap-2">
+                <button onclick="toggleVoiceHelp()" id="voice-btn" class="bg-amber-100 border-2 border-amber-500 text-amber-900 px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1.5 hover:bg-white shadow-sm cursor-pointer">
+                    <i class="fa-solid fa-comment-dots text-amber-600"></i>
+                    <span id="voice-status">語音引導：開啟</span>
+                </button>
+                <button onclick="openSettingsModal()" class="bg-white border-2 border-amber-400 text-amber-900 px-3 py-1.5 rounded-xl text-sm font-bold hover:bg-amber-100 shadow-sm cursor-pointer">
+                    <i class="fa-solid fa-gear"></i> 設定
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-6xl w-full mx-auto p-3 md:p-6 flex flex-col justify-center">
+
+        <!-- ================= MODE 1: CARE GAME ================= -->
+        <section id="view-game" class="flex flex-col items-center justify-between min-h-[75vh] gap-4">
+            
+            <!-- Step Progress Nodes (3 Main Care Steps) -->
+            <div class="w-full bg-white border-4 border-amber-300 rounded-2xl p-3 shadow-md flex justify-around items-center text-center">
+                <div id="step-node-1" class="step-node flex-1 flex flex-col items-center opacity-100">
+                    <div class="w-12 h-12 rounded-full bg-amber-500 text-white font-black flex items-center justify-center text-xl shadow-md border-2 border-amber-700">1</div>
+                    <span class="text-xs md:text-base font-bold text-amber-900 mt-1">🥕 1. 切紅蘿蔔與餵草</span>
+                </div>
+                <div class="h-1 bg-amber-200 flex-1 mx-1"></div>
+                <div id="step-node-2" class="step-node flex-1 flex flex-col items-center opacity-40">
+                    <div class="w-12 h-12 rounded-full bg-slate-300 text-slate-700 font-black flex items-center justify-center text-xl border-2 border-slate-400">2</div>
+                    <span class="text-xs md:text-base font-bold text-slate-600 mt-1">🧼 2. 刷刷背與洗澡</span>
+                </div>
+                <div class="h-1 bg-amber-200 flex-1 mx-1"></div>
+                <div id="step-node-3" class="step-node flex-1 flex flex-col items-center opacity-40">
+                    <div class="w-12 h-12 rounded-full bg-slate-300 text-slate-700 font-black flex items-center justify-center text-xl border-2 border-slate-400">3</div>
+                    <span class="text-xs md:text-base font-bold text-slate-600 mt-1">🧹 3. 打掃馬廄</span>
+                </div>
+            </div>
+
+            <!-- Interactive Visual Stage Area -->
+            <div id="stage-card" class="relative w-full max-w-3xl bg-emerald-100 border-8 border-emerald-400 rounded-3xl p-6 shadow-xl flex flex-col items-center justify-center min-h-[380px] overflow-hidden">
+                
+                <!-- Instruction Banner & Sub-counter Badge (Moved to TOP so bottom ground items are fully visible) -->
+                <div class="absolute top-3 z-30 bg-white/95 backdrop-blur-sm border-2 border-emerald-500 px-6 py-2 rounded-full shadow-lg flex flex-col items-center max-w-[92%]">
+                    <p id="instruction-text" class="text-lg md:text-2xl font-black text-emerald-950 text-center tracking-wide">
+                        按一下【拍掣】切紅蘿蔔餵小馬！
+                    </p>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span id="press-counter-badge" class="bg-amber-500 text-white font-black text-xs md:text-sm px-3 py-0.5 rounded-full shadow">
+                            進度: 0 / 5 🎯
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Environment Background Elements -->
+                <div id="barn-floor" class="absolute inset-x-0 bottom-0 h-28 bg-emerald-300/60 rounded-b-2xl border-t-4 border-emerald-400 transition-colors"></div>
+                <div class="absolute top-16 left-6 text-3xl opacity-60">☁️</div>
+                <div class="absolute top-16 right-8 text-3xl opacity-60">☁️</div>
+
+                <!-- Interactive SVG Horse -->
+                <div id="horse-container" class="relative z-10 transition-transform duration-300 mt-6">
+                    <svg id="horse-svg" class="w-56 h-56 md:w-64 md:h-64 drop-shadow-xl" viewBox="0 0 200 200">
+                        <!-- Horse Legs & Hooves -->
+                        <rect x="60" y="150" width="16" height="35" rx="6" fill="#92400e" stroke="#78350f" stroke-width="3"/>
+                        <rect x="85" y="150" width="16" height="35" rx="6" fill="#78350f" stroke="#451a03" stroke-width="3"/>
+                        <rect x="115" y="150" width="16" height="35" rx="6" fill="#92400e" stroke="#78350f" stroke-width="3"/>
+                        <rect x="135" y="150" width="16" height="35" rx="6" fill="#78350f" stroke="#451a03" stroke-width="3"/>
+                        <rect x="60" y="175" width="16" height="10" rx="2" fill="#451a03"/>
+                        <rect x="85" y="175" width="16" height="10" rx="2" fill="#451a03"/>
+                        <rect x="115" y="175" width="16" height="10" rx="2" fill="#451a03"/>
+                        <rect x="135" y="175" width="16" height="10" rx="2" fill="#451a03"/>
+
+                        <!-- Horse Body -->
+                        <path d="M 50 120 C 50 80, 140 80, 150 120 C 150 150, 130 160, 110 160 L 60 160 Z" fill="#b45309" stroke="#78350f" stroke-width="4"/>
+
+                        <!-- Horse Head and Neck -->
+                        <path d="M 120 110 L 150 50 Q 170 50, 175 75 Q 165 110, 135 120 Z" fill="#b45309" stroke="#78350f" stroke-width="4"/>
+                        <!-- Muzzle & Nostril -->
+                        <ellipse cx="165" cy="72" rx="16" ry="14" fill="#fde68a" stroke="#d97706" stroke-width="3"/>
+                        <circle cx="170" cy="74" r="3" fill="#78350f"/>
+                        
+                        <!-- Eyes (Normal vs Happy Expression) -->
+                        <circle id="horse-eye" cx="145" cy="62" r="6" fill="#1e293b"/>
+                        <circle id="horse-eye-pupil" cx="143" cy="60" r="2" fill="#ffffff"/>
+                        <path id="horse-eye-happy" d="M 140 64 Q 145 54, 150 64" fill="none" stroke="#1e293b" stroke-width="3" stroke-linecap="round" class="hidden"/>
+
+                        <!-- Ears, Mane, and Tail -->
+                        <path d="M 135 48 Q 140 30, 148 45 Z" fill="#b45309" stroke="#78350f" stroke-width="3"/>
+                        <path id="horse-mane" d="M 130 48 Q 115 70, 122 110" fill="none" stroke="#451a03" stroke-width="12" stroke-linecap="round"/>
+                        <path id="horse-tail" d="M 52 125 Q 30 140, 40 165" fill="none" stroke="#451a03" stroke-width="10" stroke-linecap="round"/>
+
+                        <!-- Dynamic Mud Spots (Step 2 - cleanable) -->
+                        <g id="mud-overlay" class="hidden">
+                            <ellipse id="mud-1" class="mud-spot" cx="80" cy="115" rx="14" ry="10" fill="#582f0e" opacity="0.85"/>
+                            <ellipse id="mud-2" class="mud-spot" cx="110" cy="125" rx="18" ry="12" fill="#432818" opacity="0.85"/>
+                            <ellipse id="mud-3" class="mud-spot" cx="140" cy="95" rx="12" ry="14" fill="#582f0e" opacity="0.85"/>
+                            <ellipse id="mud-4" class="mud-spot" cx="95" cy="140" rx="15" ry="9" fill="#381d09" opacity="0.85"/>
+                            <circle id="mud-5" class="mud-spot" cx="155" cy="80" r="7" fill="#432818" opacity="0.85"/>
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- Feed Trough Container (Step 1) -->
+                <div id="trough-container" class="absolute bottom-3 right-10 z-20 hidden flex flex-col items-center">
+                    <div id="trough-content" class="text-3xl transition-transform duration-300 transform scale-0">🌾🥕</div>
+                    <div class="w-24 h-10 bg-amber-800 border-4 border-amber-950 rounded-b-xl border-t-0 shadow-lg flex items-center justify-center text-amber-200 text-xs font-bold">
+                        餵食槽
+                    </div>
+                </div>
+
+                <!-- Dirt & Trash in Barn (Step 3 Floor Cleaning) - Clear, centered visible layer -->
+                <div id="barn-dirt-container" class="absolute bottom-3 inset-x-4 z-30 hidden flex justify-center items-center gap-2 md:gap-5 bg-amber-100/95 backdrop-blur-md px-4 md:px-6 py-2.5 md:py-3 rounded-2xl border-4 border-amber-500 shadow-2xl pointer-events-auto">
+                    <span class="text-xs md:text-sm font-black text-amber-900 bg-amber-300 px-2 py-1 rounded-lg hidden sm:inline-block">待清掃雜物：</span>
+                    <div class="flex items-center gap-3 md:gap-6">
+                        <span id="dirt-1" class="dirt-item text-4xl md:text-6xl transition-all duration-300 inline-block drop-shadow cursor-pointer">🍂</span>
+                        <span id="dirt-2" class="dirt-item text-4xl md:text-6xl transition-all duration-300 inline-block drop-shadow cursor-pointer">🌾</span>
+                        <span id="dirt-3" class="dirt-item text-4xl md:text-6xl transition-all duration-300 inline-block drop-shadow cursor-pointer">🍂</span>
+                        <span id="dirt-4" class="dirt-item text-4xl md:text-6xl transition-all duration-300 inline-block drop-shadow cursor-pointer">🪵</span>
+                        <span id="dirt-5" class="dirt-item text-4xl md:text-6xl transition-all duration-300 inline-block drop-shadow cursor-pointer">💩</span>
+                    </div>
+                    <!-- Trash Bin Target Area -->
+                    <div class="ml-2 border-l-2 border-amber-300 pl-3 flex flex-col items-center shrink-0">
+                        <span class="text-3xl md:text-4xl">🗑️</span>
+                        <span class="text-[10px] md:text-xs font-black text-amber-900">垃圾桶</span>
+                    </div>
+                </div>
+
+                <!-- Action Tool Animation Overlay -->
+                <div id="prop-overlay" class="absolute inset-0 pointer-events-none flex items-center justify-center z-30">
+                    <div id="prop-icon" class="text-8xl transition-all duration-300 opacity-0 transform scale-50">🥕</div>
+                </div>
+
+                <!-- Sparkles & Bubbles Overlay -->
+                <div id="effects-overlay" class="absolute inset-0 pointer-events-none z-40 flex items-center justify-center"></div>
+            </div>
+
+            <!-- GIANT SWITCH BUTTON FOR SPECIAL NEEDS STUDENTS -->
+            <div class="w-full max-w-2xl px-4 my-2">
+                <button id="main-switch-btn" onclick="handleSwitchPress()" class="w-full bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 border-b-8 border-amber-800 active:border-b-2 rounded-3xl p-6 md:p-8 shadow-2xl transition-all transform active:translate-y-2 flex flex-col items-center justify-center gap-2 cursor-pointer animate-pulse-glow group">
+                    <div class="flex items-center gap-4 text-white drop-shadow-md">
+                        <i id="switch-icon" class="fa-solid fa-hand-pointer text-4xl md:text-5xl group-hover:scale-110 transition-transform"></i>
+                        <span id="switch-text" class="text-3xl md:text-5xl font-black font-rounded">按一下拍掣！</span>
+                    </div>
+                    <span class="text-amber-950 font-bold text-sm md:text-base bg-amber-200/80 px-4 py-1 rounded-full border border-amber-400 mt-1">
+                        支援：點擊畫面 / 鍵盤 [空白鍵 Space] 或 [Enter]
+                    </span>
+                </button>
+            </div>
+
+        </section>
+
+
+        <!-- ================= MODE 2: AAC SOUNDBOARD ================= -->
+        <section id="view-soundboard" class="hidden flex flex-col items-center gap-6 min-h-[75vh]">
+            
+            <div class="text-center bg-white border-4 border-amber-300 px-8 py-4 rounded-3xl shadow-md w-full max-w-3xl">
+                <h2 class="text-2xl md:text-3xl font-black text-amber-950 font-rounded mb-1">🔊 自由聲音拍掣 (AAC)</h2>
+                <p class="text-amber-800 font-bold text-base md:text-lg">點擊超大按鈕，發出進食、擦身洗澡與小馬叫聲！適合感官探索與表達。</p>
+            </div>
+
+            <!-- AAC Sound Buttons Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 w-full max-w-4xl">
+                
+                <!-- Sound 1: Feed / Crunch -->
+                <button onclick="playAAC('feed')" class="bg-gradient-to-b from-orange-400 to-orange-600 border-b-8 border-orange-800 active:border-b-2 rounded-3xl p-6 text-white shadow-xl hover:brightness-105 active:translate-y-2 transition flex flex-col items-center justify-center gap-3 h-48 md:h-56 cursor-pointer">
+                    <span class="text-6xl md:text-7xl">🥕</span>
+                    <span class="text-2xl md:text-3xl font-black font-rounded">1. 馬進食咀嚼聲</span>
+                    <span class="text-xs md:text-sm bg-orange-950/30 px-3 py-1 rounded-full font-bold">喀吱喀吱吃紅蘿蔔與草</span>
+                </button>
+
+                <!-- Sound 2: Wash / Water -->
+                <button onclick="playAAC('water')" class="bg-gradient-to-b from-sky-400 to-sky-600 border-b-8 border-sky-800 active:border-b-2 rounded-3xl p-6 text-white shadow-xl hover:brightness-105 active:translate-y-2 transition flex flex-col items-center justify-center gap-3 h-48 md:h-56 cursor-pointer">
+                    <span class="text-6xl md:text-7xl">💦</span>
+                    <span class="text-2xl md:text-3xl font-black font-rounded">2. 擦身洗澡水聲</span>
+                    <span class="text-xs md:text-sm bg-sky-950/30 px-3 py-1 rounded-full font-bold">刷刷洗澡沖水聲</span>
+                </button>
+
+                <!-- Sound 3: Horse Neigh -->
+                <button onclick="playAAC('neigh')" class="bg-gradient-to-b from-amber-500 to-amber-700 border-b-8 border-amber-900 active:border-b-2 rounded-3xl p-6 text-white shadow-xl hover:brightness-105 active:translate-y-2 transition flex flex-col items-center justify-center gap-3 h-48 md:h-56 cursor-pointer">
+                    <span class="text-6xl md:text-7xl">🐴</span>
+                    <span class="text-2xl md:text-3xl font-black font-rounded">3. 馬兒歡快叫聲</span>
+                    <span class="text-xs md:text-sm bg-amber-950/30 px-3 py-1 rounded-full font-bold">嘶鳴叫聲與歡呼</span>
+                </button>
+
+                <!-- Sound 4: Brush Hair -->
+                <button onclick="playAAC('brush')" class="bg-gradient-to-b from-purple-400 to-purple-600 border-b-8 border-purple-800 active:border-b-2 rounded-3xl p-6 text-white shadow-xl hover:brightness-105 active:translate-y-2 transition flex flex-col items-center justify-center gap-3 h-48 md:h-56 cursor-pointer">
+                    <span class="text-6xl md:text-7xl">🪮</span>
+                    <span class="text-2xl md:text-3xl font-black font-rounded">4. 刷毛摩擦聲</span>
+                    <span class="text-xs md:text-sm bg-purple-950/30 px-3 py-1 rounded-full font-bold">輕柔梳理馬毛</span>
+                </button>
+
+                <!-- Sound 5: Sweep Barn -->
+                <button onclick="playAAC('sweep')" class="bg-gradient-to-b from-lime-500 to-lime-700 border-b-8 border-lime-900 active:border-b-2 rounded-3xl p-6 text-white shadow-xl hover:brightness-105 active:translate-y-2 transition flex flex-col items-center justify-center gap-3 h-48 md:h-56 cursor-pointer">
+                    <span class="text-6xl md:text-7xl">🧹</span>
+                    <span class="text-2xl md:text-3xl font-black font-rounded">5. 打掃馬廄聲</span>
+                    <span class="text-xs md:text-sm bg-lime-950/30 px-3 py-1 rounded-full font-bold">唰唰掃地聲</span>
+                </button>
+
+                <!-- Sound 6: Cheering / Applause -->
+                <button onclick="playAAC('cheer')" class="bg-gradient-to-b from-rose-400 to-rose-600 border-b-8 border-rose-800 active:border-b-2 rounded-3xl p-6 text-white shadow-xl hover:brightness-105 active:translate-y-2 transition flex flex-col items-center justify-center gap-3 h-48 md:h-56 cursor-pointer">
+                    <span class="text-6xl md:text-7xl">👏</span>
+                    <span class="text-2xl md:text-3xl font-black font-rounded">6. 讚好拍掌聲</span>
+                    <span class="text-xs md:text-sm bg-rose-950/30 px-3 py-1 rounded-full font-bold">讚賞獎勵音樂</span>
+                </button>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border-4 border-amber-400">
+            <div class="flex justify-between items-center border-b-2 border-slate-100 pb-3 mb-4">
+                <h3 class="text-2xl font-black text-amber-950 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-amber-500"></i> 教師與協作者設定
+                </h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold p-1 cursor-pointer">✕</button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">語音提示語言 (TTS Speech Language)</label>
+                    <select id="setting-lang" class="w-full bg-slate-100 border border-slate-300 rounded-xl p-3 font-bold text-slate-800">
+                        <option value="zh-HK" selected>廣東話 (Cantonese)</option>
+                        <option value="zh-TW">國語/普通話 (Mandarin)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">每個步驟拍掣次數 (Presses per Step)</label>
+                    <select id="setting-press-target" onchange="updateTargetPresses(this.value)" class="w-full bg-slate-100 border border-slate-300 rounded-xl p-3 font-bold text-slate-800">
+                        <option value="5" selected>5 次 (預設最佳)</option>
+                        <option value="3">3 次 (較簡單)</option>
+                        <option value="6">6 次 (加強練習)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeSettingsModal()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-2.5 rounded-xl shadow-md text-lg cursor-pointer">
+                    確定並返回
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Game State
+        let currentMode = 'game';
+        let currentStep = 1;
+        let stepSubCount = 0;
+        let maxPresses = 5;
+        let isProcessingAction = false;
+        let isVoiceEnabled = true;
+        let speechLang = 'zh-HK';
+        let audioCtx = null;
+
+        // Lazy Initializer for Web Audio API
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContextClass();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        // Web Audio API Sound Synthesizer
+        const SoundFX = {
+            // 1. Realistic Carrot Chop & Chewing/Crunching Sound
+            playCrunch: () => {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                [0, 0.12].forEach((offset) => {
+                    const bufferSize = ctx.sampleRate * 0.08;
+                    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let j = 0; j < bufferSize; j++) {
+                        data[j] = (Math.random() * 2 - 1) * Math.exp(-j / (bufferSize * 0.3));
+                    }
+                    const noise = ctx.createBufferSource();
+                    noise.buffer = buffer;
+
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.setValueAtTime(1200 + Math.random() * 400, now + offset);
+                    filter.Q.value = 3;
+
+                    const gain = ctx.createGain();
+                    gain.gain.setValueAtTime(0.5, now + offset);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.08);
+
+                    noise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(ctx.destination);
+                    noise.start(now + offset);
+                });
+            },
+
+            // 2. Wash & Wipe Sponge Water Scrubbing Sound
+            playWater: () => {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const bufferSize = ctx.sampleRate * 0.5;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(400, now);
+                filter.frequency.linearRampToValueAtTime(1800, now + 0.2);
+                filter.frequency.linearRampToValueAtTime(300, now + 0.5);
+
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                noise.start(now);
+            },
+
+            // 3. Realistic Horse Whinny & Neighing Call
+            playNeigh: () => {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+
+                osc.frequency.setValueAtTime(380, now);
+                osc.frequency.exponentialRampToValueAtTime(820, now + 0.2);
+                osc.frequency.setValueAtTime(820, now + 0.35);
+                osc.frequency.exponentialRampToValueAtTime(350, now + 0.65);
+
+                const lfo = ctx.createOscillator();
+                lfo.frequency.setValueAtTime(16, now);
+                const lfoGain = ctx.createGain();
+                lfoGain.gain.setValueAtTime(55, now);
+                lfo.connect(osc.frequency);
+                lfo.start(now);
+                lfo.stop(now + 0.65);
+
+                gain.gain.setValueAtTime(0.35, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.65);
+            },
+
+            // 4. Brush Grooming Sound
+            playBrush: () => {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const bufferSize = ctx.sampleRate * 0.25;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.setValueAtTime(2500, now);
+
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                noise.start(now);
+            },
+
+            // 5. Broom Sweeping Barn Sound
+            playSweep: () => {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const bufferSize = ctx.sampleRate * 0.32;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(1500, now);
+                filter.frequency.linearRampToValueAtTime(600, now + 0.3);
+
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.35, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.32);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                noise.start(now);
+            },
+
+            // 6. Fanfare Cheering & Applause Sound
+            playCheer: () => {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                    gain.gain.setValueAtTime(0.3, now + idx * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.4);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now + idx * 0.1);
+                    osc.stop(now + idx * 0.1 + 0.4);
+                });
+            }
+        };
+
+        // Text-to-Speech Voice Guidance Helper
+        function speakPrompt(text) {
+            if (!isVoiceEnabled || !('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = speechLang;
+            utterance.rate = 0.9;
+            utterance.pitch = 1.1;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function toggleVoiceHelp() {
+            isVoiceEnabled = !isVoiceEnabled;
+            const statusLabel = document.getElementById('voice-status');
+            statusLabel.innerText = isVoiceEnabled ? '語音引導：開啟' : '語音引導：關閉';
+            if (isVoiceEnabled) {
+                speakPrompt("語音引導已開啟");
+            }
+        }
+
+        function updateTargetPresses(val) {
+            maxPresses = parseInt(val, 10) || 5;
+            updatePressBadge();
+        }
+
+        function updatePressBadge() {
+            document.getElementById('press-counter-badge').innerText = `進度: ${stepSubCount} / ${maxPresses} 🎯`;
+        }
+
+        // Central Switch Handler (Clicks & Keyboard)
+        function handleSwitchPress() {
+            if (isProcessingAction) return;
+
+            // Visual Switch Press Effect
+            const switchBtn = document.getElementById('main-switch-btn');
+            switchBtn.classList.add('switch-pressed');
+            setTimeout(() => switchBtn.classList.remove('switch-pressed'), 200);
+
+            if (currentMode === 'game') {
+                executeGameSubStep();
+            }
+        }
+
+        // Global Keyboard Switch Integration (Space / Enter)
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                handleSwitchPress();
+            }
+        });
+
+        // Step Mechanics Execution
+        function executeGameSubStep() {
+            isProcessingAction = true;
+            stepSubCount++;
+            updatePressBadge();
+
+            const propIcon = document.getElementById('prop-icon');
+            const horseSvg = document.getElementById('horse-svg');
+
+            // STEP 1: CUT CARROT & FEED HAY
+            if (currentStep === 1) {
+                const troughContent = document.getElementById('trough-content');
+                document.getElementById('trough-container').classList.remove('hidden');
+
+                if (stepSubCount < maxPresses - 1) {
+                    // Cutting Carrot Phase
+                    propIcon.innerText = '🔪🥕';
+                    propIcon.className = 'text-8xl transition-all duration-200 opacity-100 scale-125 translate-x-8 translate-y-4';
+                    SoundFX.playCrunch();
+                    speakPrompt("切紅蘿蔔！");
+
+                    setTimeout(() => {
+                        propIcon.className = 'text-8xl transition-all duration-200 opacity-0 scale-50';
+                        isProcessingAction = false;
+                    }, 600);
+                } else if (stepSubCount === maxPresses - 1) {
+                    // Putting Hay into Trough Phase
+                    propIcon.innerText = '🌾';
+                    propIcon.className = 'text-8xl transition-all duration-300 opacity-100 scale-125 translate-x-16 translate-y-12';
+                    troughContent.className = 'text-3xl transition-transform duration-300 transform scale-100';
+                    SoundFX.playCrunch();
+                    speakPrompt("把乾草放進餵食槽！");
+
+                    setTimeout(() => {
+                        propIcon.className = 'text-8xl transition-all duration-200 opacity-0 scale-50';
+                        isProcessingAction = false;
+                    }, 700);
+                } else {
+                    // Step 1 Final Feeding
+                    propIcon.innerText = '🥕🌾';
+                    propIcon.className = 'text-8xl transition-all duration-300 opacity-100 scale-125 translate-x-16 translate-y-12';
+                    SoundFX.playCrunch();
+                    SoundFX.playNeigh();
+                    speakPrompt("小馬吃了紅蘿蔔和乾草，吃得好開心！");
+
+                    setTimeout(() => {
+                        propIcon.className = 'text-8xl transition-all duration-200 opacity-0 scale-50';
+                        advanceToStep(2, "小馬在泥巴裡翻滾，身上黏滿泥土，按【拍掣】幫牠刷洗乾淨！");
+                    }, 1500);
+                }
+
+            // STEP 2: BRUSH MUD & WASH HORSE
+            } else if (currentStep === 2) {
+                document.getElementById('mud-overlay').classList.remove('hidden');
+
+                // Clean mud spot on horse body on each press
+                const mudSpot = document.getElementById(`mud-${stepSubCount}`);
+                if (mudSpot) mudSpot.style.opacity = '0';
+
+                if (stepSubCount <= 3) {
+                    // Brushing Mud
+                    propIcon.innerText = '🪮';
+                    propIcon.className = 'text-8xl transition-all duration-200 opacity-100 scale-125 -translate-y-4';
+                    SoundFX.playBrush();
+                    speakPrompt(`刷乾淨馬身上的泥巴！`);
+
+                    setTimeout(() => {
+                        propIcon.className = 'text-8xl transition-all duration-200 opacity-0 scale-50';
+                        isProcessingAction = false;
+                    }, 600);
+
+                } else if (stepSubCount < maxPresses) {
+                    // Washing Water Splash
+                    propIcon.innerText = '💦';
+                    propIcon.className = 'text-8xl transition-all duration-300 opacity-100 scale-125 -translate-y-6';
+                    SoundFX.playWater();
+                    showBubbles();
+                    speakPrompt("用清水幫小馬沖洗！");
+
+                    setTimeout(() => {
+                        propIcon.className = 'text-8xl transition-all duration-200 opacity-0 scale-50';
+                        isProcessingAction = false;
+                    }, 700);
+
+                } else {
+                    // Step 2 Final Completion
+                    propIcon.innerText = '✨';
+                    propIcon.className = 'text-8xl transition-all duration-300 opacity-100 scale-125';
+                    SoundFX.playWater();
+                    SoundFX.playNeigh();
+                    showSparkles('✨', 8);
+                    speakPrompt("哇！小馬洗得乾乾淨淨了！");
+
+                    setTimeout(() => {
+                        propIcon.className = 'text-8xl transition-all duration-200 opacity-0 scale-50';
+                        document.getElementById('mud-overlay').classList.add('hidden');
+                        advanceToStep(3, "地面有樹葉、乾草和便便，按【拍掣】把它們逐一掃乾淨！");
+                    }, 1800);
+                }
+
+            // STEP 3: SWEEP BARN FLOOR (LEAVES, HAY, WOOD, POOP)
+            } else if (currentStep === 3) {
+                document.getElementById('barn-dirt-container').classList.remove('hidden');
+
+                const dirtItem = document.getElementById(`dirt-${stepSubCount}`);
+                const dirtNames = ["樹葉 🍂", "乾草 🌾", "樹葉 🍂", "木柴 🪵", "便便 💩"];
+                const currentDirtName = dirtNames[stepSubCount - 1] || "垃圾";
+
+                // Precise broom location relative to target dirt item (x-offsets for 5 items)
+                const xPositions = [-140, -70, 0, 70, 140];
+                const targetX = xPositions[stepSubCount - 1] || 0;
+
+                propIcon.innerText = '🧹';
+                propIcon.style.transform = `translate(${targetX}px, 85px) rotate(-25deg) scale(1.1)`;
+                propIcon.className = 'text-6xl md:text-7xl transition-all duration-300 opacity-100';
+                
+                SoundFX.playSweep();
+
+                // Clear visual sweeping effect: Highlight target item & fly it into the trash bin 🗑️
+                if (dirtItem) {
+                    dirtItem.classList.add('scale-125', 'brightness-125');
+                    
+                    setTimeout(() => {
+                        dirtItem.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                        dirtItem.style.transform = 'translate(180px, -20px) scale(0.2) rotate(180deg)';
+                        dirtItem.style.opacity = '0';
+                        showDustPuff(targetX);
+                    }, 200);
+                }
+
+                if (stepSubCount < maxPresses) {
+                    speakPrompt(`掃走${currentDirtName}！`);
+
+                    setTimeout(() => {
+                        propIcon.className = 'text-8xl transition-all duration-200 opacity-0 scale-50';
+                        isProcessingAction = false;
+                    }, 700);
+
+                } else {
+                    // Step 3 / Game Victory Completion
+                    speakPrompt(`掃走${currentDirtName}！馬廄完全乾淨了！`);
+
+                    setTimeout(() => {
+                        propIcon.className = 'text-8xl transition-all duration-200 opacity-0 scale-50';
+                        document.getElementById('barn-dirt-container').classList.add('hidden');
+                        triggerVictory();
+                    }, 1100);
+                }
+
+            // VICTORY / RESET STATE
+            } else if (currentStep === 4) {
+                resetGame();
+            }
+        }
+
+        function triggerVictory() {
+            currentStep = 4;
+            const horseSvg = document.getElementById('horse-svg');
+            const horseEye = document.getElementById('horse-eye');
+            const horseEyeHappy = document.getElementById('horse-eye-happy');
+
+            horseSvg.classList.add('animate-horse-happy');
+            horseEye.classList.add('hidden');
+            horseEyeHappy.classList.remove('hidden');
+
+            document.getElementById('instruction-text').innerText = "🎉 太棒了！小馬照顧完成了！按【拍掣】再玩一次！";
+            document.getElementById('switch-text').innerText = "再玩一次 🔄";
+            
+            SoundFX.playCheer();
+            SoundFX.playNeigh();
+            showSparkles('🌟', 12);
+            speakPrompt("太棒了！你非常細心，小馬現在又乾淨又開心！按拍掣可以再玩一次！");
+            isProcessingAction = false;
+        }
+
+        function advanceToStep(nextStepNum, instructionMsg) {
+            currentStep = nextStepNum;
+            stepSubCount = 0;
+            isProcessingAction = false;
+
+            for (let i = 1; i <= 3; i++) {
+                const node = document.getElementById(`step-node-${i}`);
+                if (i <= currentStep) {
+                    node.classList.remove('opacity-40');
+                    node.classList.add('opacity-100');
+                    node.children[0].className = 'w-12 h-12 rounded-full bg-amber-500 text-white font-black flex items-center justify-center text-xl shadow-md border-2 border-amber-700';
+                }
+            }
+
+            if (nextStepNum === 2) {
+                document.getElementById('mud-overlay').classList.remove('hidden');
+                document.getElementById('barn-dirt-container').classList.add('hidden');
+                for (let j = 1; j <= 5; j++) {
+                    const spot = document.getElementById(`mud-${j}`);
+                    if (spot) spot.style.opacity = '0.85';
+                }
+            } else if (nextStepNum === 3) {
+                document.getElementById('barn-dirt-container').classList.remove('hidden');
+                for (let k = 1; k <= 5; k++) {
+                    const dirt = document.getElementById(`dirt-${k}`);
+                    if (dirt) {
+                        dirt.style.transform = 'none';
+                        dirt.style.opacity = '1';
+                        dirt.className = 'dirt-item text-4xl md:text-6xl transition-all duration-300 inline-block drop-shadow cursor-pointer';
+                    }
+                }
+            }
+
+            updatePressBadge();
+            document.getElementById('instruction-text').innerText = instructionMsg;
+            speakPrompt(instructionMsg);
+        }
+
+        function resetGame() {
+            currentStep = 1;
+            stepSubCount = 0;
+            isProcessingAction = false;
+
+            const horseSvg = document.getElementById('horse-svg');
+            const horseEye = document.getElementById('horse-eye');
+            const horseEyeHappy = document.getElementById('horse-eye-happy');
+
+            horseSvg.classList.remove('animate-horse-happy');
+            horseEye.classList.remove('hidden');
+            horseEyeHappy.classList.add('hidden');
+
+            document.getElementById('switch-text').innerText = "按一下拍掣！";
+
+            for (let i = 2; i <= 3; i++) {
+                const node = document.getElementById(`step-node-${i}`);
+                node.classList.add('opacity-40');
+                node.children[0].className = 'w-12 h-12 rounded-full bg-slate-300 text-slate-700 font-black flex items-center justify-center text-xl border-2 border-slate-400';
+            }
+
+            document.getElementById('mud-overlay').classList.add('hidden');
+            document.getElementById('barn-dirt-container').classList.add('hidden');
+
+            // Reset ground items
+            for (let k = 1; k <= 5; k++) {
+                const dirt = document.getElementById(`dirt-${k}`);
+                if (dirt) {
+                    dirt.style.transform = 'none';
+                    dirt.style.opacity = '1';
+                    dirt.className = 'dirt-item text-4xl md:text-6xl transition-all duration-300 inline-block drop-shadow cursor-pointer';
+                }
+            }
+
+            updatePressBadge();
+            document.getElementById('instruction-text').innerText = "按一下【拍掣】切紅蘿蔔餵小馬！";
+            speakPrompt("歡迎再次照顧小馬！按一下拍掣，切紅蘿蔔餵小馬！");
+        }
+
+        // Dust Puff Animation Generator
+        function showDustPuff(xPos) {
+            const overlay = document.getElementById('effects-overlay');
+            const dust = document.createElement('div');
+            dust.innerText = '💨';
+            dust.className = 'absolute text-4xl transition-all duration-500 pointer-events-none opacity-90';
+            dust.style.left = `calc(50% + ${xPos}px)`;
+            dust.style.top = '70%';
+            overlay.appendChild(dust);
+            setTimeout(() => {
+                dust.style.transform = 'scale(1.6) translateY(-25px)';
+                dust.style.opacity = '0';
+            }, 50);
+            setTimeout(() => dust.remove(), 550);
+        }
+
+        // Sparkle Visual Effects Generator
+        function showSparkles(emoji, count) {
+            const overlay = document.getElementById('effects-overlay');
+            for (let i = 0; i < count; i++) {
+                const el = document.createElement('div');
+                el.innerText = emoji;
+                el.className = 'absolute text-4xl animate-bounce pointer-events-none transition-all duration-1000';
+                el.style.left = `${15 + Math.random() * 70}%`;
+                el.style.top = `${20 + Math.random() * 60}%`;
+                overlay.appendChild(el);
+
+                setTimeout(() => el.remove(), 1200);
+            }
+        }
+
+        // Bubble Visual Effects Generator
+        function showBubbles() {
+            const overlay = document.getElementById('effects-overlay');
+            for (let i = 0; i < 8; i++) {
+                const bubble = document.createElement('div');
+                bubble.innerText = '🫧';
+                bubble.className = 'absolute text-3xl transition-transform duration-1000 transform -translate-y-12 opacity-80';
+                bubble.style.left = `${20 + Math.random() * 60}%`;
+                bubble.style.top = `${40 + Math.random() * 40}%`;
+                overlay.appendChild(bubble);
+
+                setTimeout(() => bubble.remove(), 1000);
+            }
+        }
+
+        // AAC Soundboard Trigger
+        function playAAC(type) {
+            if (type === 'feed') {
+                SoundFX.playCrunch();
+                speakPrompt("馬進食，嚼嚼嚼");
+            } else if (type === 'water') {
+                SoundFX.playWater();
+                speakPrompt("擦身洗澡，嘩啦嘩啦");
+            } else if (type === 'neigh') {
+                SoundFX.playNeigh();
+                speakPrompt("小馬，歡快叫聲");
+            } else if (type === 'brush') {
+                SoundFX.playBrush();
+                speakPrompt("刷毛，輕柔梳理");
+            } else if (type === 'sweep') {
+                SoundFX.playSweep();
+                speakPrompt("打掃馬廄，唰唰唰");
+            } else if (type === 'cheer') {
+                SoundFX.playCheer();
+                speakPrompt("讚好拍掌，你好棒");
+            }
+        }
+
+        // Tab Navigation Switch
+        function switchMode(mode) {
+            currentMode = mode;
+            const gameView = document.getElementById('view-game');
+            const soundboardView = document.getElementById('view-soundboard');
+            const tabGame = document.getElementById('tab-game');
+            const tabSoundboard = document.getElementById('tab-soundboard');
+
+            if (mode === 'game') {
+                gameView.classList.remove('hidden');
+                soundboardView.classList.add('hidden');
+                tabGame.className = 'px-4 py-2 rounded-xl text-base md:text-lg font-bold transition flex items-center gap-2 bg-white text-amber-900 shadow cursor-pointer';
+                tabSoundboard.className = 'px-4 py-2 rounded-xl text-base md:text-lg font-bold transition flex items-center gap-2 text-amber-800 hover:bg-amber-100 cursor-pointer';
+                speakPrompt("切換到拍掣照顧小馬");
+            } else {
+                gameView.classList.add('hidden');
+                soundboardView.classList.remove('hidden');
+                tabSoundboard.className = 'px-4 py-2 rounded-xl text-base md:text-lg font-bold transition flex items-center gap-2 bg-white text-amber-900 shadow cursor-pointer';
+                tabGame.className = 'px-4 py-2 rounded-xl text-base md:text-lg font-bold transition flex items-center gap-2 text-amber-800 hover:bg-amber-100 cursor-pointer';
+                speakPrompt("切換到自由聲音大按鈕");
+            }
+        }
+
+        // Settings Modal Handlers
+        function openSettingsModal() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            speechLang = document.getElementById('setting-lang').value;
+            document.getElementById('settings-modal').classList.add('hidden');
+            speakPrompt("設定已更新");
+        }
+
+        // Welcome Greeting on Load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                speakPrompt("歡迎來到照顧小馬！按一下拍掣，切紅蘿蔔餵小馬！");
+            }, 600);
+        });
+    </script>
+</body>
+</html>
