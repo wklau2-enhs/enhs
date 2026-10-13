@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>暗室亮起來：檯燈拍擊大冒險</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
+    
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      background-color: #0f172a;
+      overflow-x: hidden;
+    }
+
+    /* 立體大按鈕樣式 (模擬特教 BigMack 開關) */
+    .big-switch-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9999px;
+      transition: all 0.12s ease-in-out;
+      box-shadow: 0 14px 0 #991b1b, 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+      cursor: pointer;
+    }
+
+    .big-switch-btn:active, .big-switch-btn.pressed {
+      transform: translateY(10px);
+      box-shadow: 0 4px 0 #991b1b, 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    }
+
+    .big-switch-btn-on {
+      box-shadow: 0 14px 0 #15803d, 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+    }
+    .big-switch-btn-on:active, .big-switch-btn-on.pressed {
+      box-shadow: 0 4px 0 #15803d, 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 燈光發光暈圈動畫 */
+    .light-glow {
+      box-shadow: 0 0 100px 40px rgba(253, 224, 71, 0.7), inset 0 0 60px rgba(254, 240, 138, 0.9);
+    }
+
+    /* 燈光射線擴散效果 */
+    .light-beam {
+      background: linear-gradient(180deg, rgba(254, 240, 138, 0.85) 0%, rgba(253, 224, 71, 0.3) 65%, rgba(253, 224, 71, 0) 100%);
+      clip-path: polygon(25% 0%, 75% 0%, 100% 100%, 0% 100%);
+      transition: opacity 0.4s ease-in-out;
+    }
+
+    /* Siri 脈動效果 */
+    .siri-pulse {
+      animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.8); }
+      70% { transform: scale(1.08); box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+    }
+
+    .animate-spin-slow {
+      animation: spin 12s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .room-container {
+      transition: background-color 0.5s ease, border-color 0.5s ease;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-3 md:p-6 text-slate-100">
+
+  <header class="max-w-5xl mx-auto w-full bg-slate-800/90 backdrop-blur rounded-3xl p-4 shadow-2xl border-4 border-slate-700 flex flex-wrap items-center justify-between gap-4 mb-3">
+    <div class="flex items-center gap-3">
+      <div class="bg-amber-500 text-slate-900 w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center text-3xl shadow-lg font-black">
+        <i class="fa-solid fa-lightbulb"></i>
+      </div>
+      <div>
+        <h1 class="text-xl md:text-3xl font-black text-amber-300 tracking-wide">暗室亮起來：檯燈拍擊大冒險</h1>
+        <p class="text-xs md:text-sm text-slate-300 font-bold">生活自理技能訓練——學習拍擊控制檯燈開關</p>
+      </div>
+    </div>
+
+    <!-- 模式與語音開關 -->
+    <div class="flex items-center gap-2 md:gap-3">
+      <button id="modeFreeBtn" onclick="switchGameMode('free')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-2 md:px-4 md:py-2.5 rounded-2xl border-2 border-amber-300 transition text-sm md:text-base flex items-center gap-1.5 shadow">
+        <i class="fa-solid fa-hand-pointer"></i>
+        <span>自由拍擊</span>
+      </button>
+      <button id="modeMissionBtn" onclick="switchGameMode('mission')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-black px-3 py-2 md:px-4 md:py-2.5 rounded-2xl border-2 border-slate-500 transition text-sm md:text-base flex items-center gap-1.5 shadow">
+        <i class="fa-solid fa-bullseye text-cyan-400"></i>
+        <span>天黑天光任務</span>
+      </button>
+      <button onclick="toggleAudioPrompt()" id="soundToggleBtn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 p-2.5 rounded-2xl border-2 border-slate-500 transition text-lg" title="開啟/關閉語音">
+        <i class="fa-solid fa-volume-high text-emerald-400" id="soundIcon"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto w-full flex-1 flex flex-col gap-4">
+
+    <!-- 語音任務指導區 -->
+    <section id="siriBox" class="bg-gradient-to-r from-indigo-950 via-purple-950 to-slate-950 text-white rounded-3xl p-4 shadow-xl relative overflow-hidden border-4 border-indigo-500/50">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
+        
+        <!-- 語音廣播觸發按鈕 -->
+        <div class="flex items-center gap-3">
+          <button id="siriBtn" onclick="playSiriPrompt()" class="siri-pulse bg-gradient-to-tr from-cyan-400 via-blue-500 to-purple-600 hover:brightness-110 text-white w-16 h-16 md:w-20 md:h-20 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-white active:scale-90 transition">
+            <i class="fa-solid fa-volume-high text-2xl md:text-3xl"></i>
+            <span class="text-[10px] md:text-xs font-black mt-0.5">聽語音提示</span>
+          </button>
+          <div>
+            <span id="modeBadge" class="bg-amber-500 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full">自由拍擊模式</span>
+            <h2 id="siriTitle" class="text-lg md:text-xl font-black text-cyan-300 mt-1">請嘗試拍擊下方的大按鈕！</h2>
+          </div>
+        </div>
+
+        <!-- 語音提示對話框 -->
+        <div class="bg-slate-900/80 backdrop-blur rounded-2xl p-3 md:p-4 border border-indigo-400/40 w-full md:w-auto flex-1 min-h-[64px] flex items-center justify-center text-center">
+          <p id="siriSpeechText" class="text-base md:text-2xl font-black text-yellow-200 tracking-wide leading-relaxed">
+            「拍一下紅色大按鈕，試下開燈同閂燈啦！」
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 房間與檯燈互動場景 -->
+    <section id="roomContainer" class="room-container bg-slate-950 border-8 border-slate-800 rounded-3xl p-4 md:p-6 shadow-2xl relative overflow-hidden flex flex-col items-center justify-between min-h-[380px] md:min-h-[440px]">
+      
+      <!-- 窗戶景致（月亮/太陽動態切換） -->
+      <div class="absolute top-4 right-6 w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 border-slate-700 bg-slate-900 overflow-hidden shadow-inner z-0">
+        <div id="skyView" class="w-full h-full relative transition-all duration-700 bg-slate-950">
+          <!-- 夜空景緻 -->
+          <div id="nightSky" class="absolute inset-0 flex items-center justify-center transition-opacity duration-500">
+            <i class="fa-solid fa-moon text-amber-200 text-4xl md:text-5xl drop-shadow-lg"></i>
+            <i class="fa-solid fa-star text-yellow-300 text-xs absolute top-2 left-3 animate-pulse"></i>
+            <i class="fa-solid fa-star text-yellow-300 text-xs absolute bottom-3 right-3 animate-pulse"></i>
+          </div>
+          <!-- 晴空景緻 -->
+          <div id="daySky" class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-500 bg-sky-400">
+            <i class="fa-solid fa-sun text-amber-300 text-5xl md:text-6xl animate-spin-slow"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- 房間狀態提示徽章 -->
+      <div class="z-10 text-center mt-1">
+        <span id="lampStatusBadge" class="bg-slate-800 text-slate-300 text-base md:text-xl font-black px-6 py-2 rounded-2xl border-2 border-slate-600 shadow-md inline-flex items-center gap-2">
+          <i id="statusIcon" class="fa-solid fa-moon text-indigo-400"></i>
+          <span id="statusText">房間現在：暗黑中（檯燈已閂）</span>
+        </span>
+      </div>
+
+      <!-- 檯燈本體與燈光照射區域 -->
+      <div class="relative w-full max-w-lg h-64 md:h-72 my-2 flex items-end justify-center z-10">
+        
+        <!-- 檯燈開燈時的光束 -->
+        <div id="lightBeam" class="light-beam absolute top-12 w-80 md:w-96 h-52 md:h-56 opacity-0 pointer-events-none z-0"></div>
+
+        <!-- 檯燈立體結構 -->
+        <div class="relative flex flex-col items-center z-10">
+          
+          <!-- 燈罩與燈泡 -->
+          <div id="lampHead" class="relative transition-all duration-300">
+            <div id="glowCircle" class="absolute -inset-6 rounded-full bg-yellow-300/0 light-glow opacity-0 transition-opacity duration-500 pointer-events-none"></div>
+            
+            <!-- 紅色燈罩 -->
+            <div class="w-28 h-20 md:w-36 md:h-24 bg-gradient-to-b from-rose-600 to-rose-800 rounded-t-full border-4 border-rose-900 shadow-xl flex items-end justify-center relative overflow-hidden">
+              <div class="w-full h-3 bg-rose-900/50 mb-1"></div>
+            </div>
+
+            <!-- 發光燈泡 -->
+            <div id="bulb" class="w-10 h-10 md:w-12 md:h-12 bg-slate-700 rounded-full mx-auto -mt-2 border-2 border-slate-600 transition-colors duration-300 flex items-center justify-center">
+              <i id="bulbIcon" class="fa-solid fa-bolt text-slate-500 text-lg"></i>
+            </div>
+          </div>
+
+          <!-- 支架與底座 -->
+          <div class="w-4 h-24 md:h-28 bg-gradient-to-r from-slate-400 via-slate-200 to-slate-400 border-x-2 border-slate-600"></div>
+          <div class="w-32 h-6 md:w-40 md:h-7 bg-gradient-to-r from-slate-700 via-slate-600 to-slate-800 rounded-t-2xl border-4 border-slate-800 shadow-2xl relative flex items-center justify-center">
+            <div id="miniSwitchLight" class="w-4 h-4 rounded-full bg-red-500 border border-white shadow"></div>
+          </div>
+
+          <!-- 書桌與物品（開燈時亮起） -->
+          <div class="w-80 md:w-96 h-6 bg-amber-900 rounded-t-lg border-2 border-amber-950 flex justify-between items-center px-6 shadow-inner">
+            <div id="storybook" class="transition-all duration-500 opacity-30 text-amber-200 text-xs md:text-sm font-bold flex items-center gap-1">
+              <i class="fa-solid fa-book-open text-cyan-300 text-lg md:text-2xl"></i>
+              <span>童話故事書</span>
+            </div>
+            <div id="teddyBear" class="transition-all duration-500 opacity-30 text-amber-200 text-xs md:text-sm font-bold flex items-center gap-1">
+              <i class="fa-solid fa-bear-hug text-amber-400 text-xl md:text-3xl"></i>
+              <span>床頭小熊</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 巨型拍擊按鈕 (BigMack Switch) 區 -->
+      <div class="z-20 w-full flex flex-col items-center gap-2 mt-2">
+        <div class="text-xs md:text-sm text-slate-300 font-bold flex items-center gap-2">
+          <span class="bg-indigo-600 text-white px-2.5 py-0.5 rounded-full">提示</span>
+          <span>按下方大按鈕，或按鍵盤 <kbd class="bg-slate-700 border border-slate-500 px-2 py-0.5 rounded text-amber-300">Spacebar 空白鍵</kbd> 拍擊</span>
+        </div>
+
+        <button id="bigSwitch" 
+                onclick="handleBigSwitchClick()" 
+                class="big-switch-btn bg-gradient-to-b from-red-500 to-red-700 border-8 border-red-300 w-64 h-24 md:w-80 md:h-28 text-white active:scale-95">
+          <div class="flex items-center justify-center gap-3">
+            <i class="fa-solid fa-hand-pointer text-3xl md:text-4xl animate-bounce"></i>
+            <div class="text-left">
+              <div id="switchActionText" class="text-2xl md:text-3xl font-black tracking-wider">拍一下開燈</div>
+              <div class="text-xs md:text-sm text-red-100 font-bold">【巨型拍擊開關】</div>
+            </div>
+          </div>
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- 任務完成通關嘉許彈窗 -->
+  <div id="celebrationModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border-8 border-yellow-400 rounded-3xl p-6 md:p-8 max-w-md w-full text-center shadow-2xl animate-bounce-in">
+      <div class="text-6xl md:text-7xl mb-3">🌟</div>
+      <h2 id="modalTitle" class="text-2xl md:text-3xl font-black text-amber-300 mb-2">太棒了！答對了！</h2>
+      <p id="modalFeedbackText" class="text-lg md:text-xl font-bold text-slate-200 mb-6">你成功按指示控制了檯燈！</p>
+      
+      <div class="flex flex-col gap-3">
+        <button id="nextTaskBtn" onclick="nextMission()" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xl md:text-2xl font-black py-3.5 px-6 rounded-2xl shadow-xl border-2 border-white active:scale-95 transition">
+          下一個任務 <i class="fa-solid fa-arrow-right ml-2"></i>
+        </button>
+        <button onclick="playSiriPrompt()" class="bg-indigo-900/80 text-indigo-200 font-bold py-2.5 px-4 rounded-xl hover:bg-indigo-800 transition border border-indigo-400/30">
+          <i class="fa-solid fa-volume-high mr-2"></i>再聽一次語音提示
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 遊戲狀態與變數
+    let currentGameMode = 'free'; // 'free' 或 'mission'
+    let isLampOn = false;
+    let audioEnabled = true;
+    let currentMissionIndex = 0;
+    let tapCount = 0;
+
+    // 天黑天光語音任務設計 (廣東話)
+    const MISSIONS = [
+      {
+        id: 1,
+        title: "任務一：天黑了開燈",
+        siriPrompt: "「天黑了！房間暗湛湛，請拍一下按鈕開啟房間的燈！」",
+        siriSpeech: "天黑了！房間暗湛湛，請拍一下按鈕開啟房間的燈！",
+        targetState: true, // 需要開燈
+        explanation: "太棒了！天黑拍擊開燈，房間變亮晶晶了！"
+      },
+      {
+        id: 2,
+        title: "任務二：天亮了閂燈",
+        siriPrompt: "「天光了！太陽升起囉，請拍一下按鈕關閉房間的燈！」",
+        siriSpeech: "天光了！太陽升起囉，請拍一下按鈕關閉房間的燈！",
+        targetState: false, // 需要閂燈
+        explanation: "很好！天光咗拍擊閂燈，真是省電的好孩子！"
+      },
+      {
+        id: 3,
+        title: "任務三：看故事書",
+        siriPrompt: "「天黑想睇故事書，好暗睇唔到，請拍一下按鈕開燈！」",
+        siriSpeech: "天黑想睇故事書，好暗睇唔到，請拍一下按鈕開燈！",
+        targetState: true, // 需要開燈
+        explanation: "真棒！開燈之後故事書看得清清晰晰！"
+      },
+      {
+        id: 4,
+        title: "任務四：準備睡覺閂燈",
+        siriPrompt: "「要睡覺啦，天黑黑好舒服，請拍一下按鈕閂燈！」",
+        siriSpeech: "要睡覺啦，天黑黑好舒服，請拍一下按鈕閂燈！",
+        targetState: false, // 需要閂燈
+        explanation: "太棒了！閂咗燈，祝你有個好夢，晚安！"
+      }
+    ];
+
+    window.onload = () => {
+      // 監聽鍵盤空白鍵/Enter鍵 (方便特教 Switch 開關操作)
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault();
+          const bigSwitchBtn = document.getElementById('bigSwitch');
+          bigSwitchBtn.classList.add('pressed');
+          handleBigSwitchClick();
+          setTimeout(() => bigSwitchBtn.classList.remove('pressed'), 150);
+        }
+      });
+
+      // 初始化 UI 狀態
+      updateUI();
+      setTimeout(() => {
+        speakText("歡迎玩拍擊檯燈遊戲！按紅色大按鈕就可以控制檯燈！");
+      }, 500);
+    };
+
+    // 切換模式 (自由拍擊 vs 任務模式)
+    function switchGameMode(mode) {
+      currentGameMode = mode;
+      const freeBtn = document.getElementById('modeFreeBtn');
+      const missionBtn = document.getElementById('modeMissionBtn');
+      const modeBadge = document.getElementById('modeBadge');
+
+      if (mode === 'free') {
+        freeBtn.className = "bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-2 md:px-4 md:py-2.5 rounded-2xl border-2 border-amber-300 transition text-sm md:text-base flex items-center gap-1.5 shadow";
+        missionBtn.className = "bg-slate-700 hover:bg-slate-600 text-slate-200 font-black px-3 py-2 md:px-4 md:py-2.5 rounded-2xl border-2 border-slate-500 transition text-sm md:text-base flex items-center gap-1.5 shadow";
+        modeBadge.innerText = "自由拍擊模式";
+        modeBadge.className = "bg-amber-500 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full";
+        document.getElementById('siriTitle').innerText = "請嘗試拍擊下方的大按鈕！";
+        document.getElementById('siriSpeechText').innerText = "「拍一下紅色大按鈕，試下開燈同閂燈啦！」";
+        speakText("自由拍擊模式，按紅色大按鈕控制開關。");
+      } else {
+        missionBtn.className = "bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black px-3 py-2 md:px-4 md:py-2.5 rounded-2xl border-2 border-cyan-300 transition text-sm md:text-base flex items-center gap-1.5 shadow";
+        freeBtn.className = "bg-slate-700 hover:bg-slate-600 text-slate-200 font-black px-3 py-2 md:px-4 md:py-2.5 rounded-2xl border-2 border-slate-500 transition text-sm md:text-base flex items-center gap-1.5 shadow";
+        modeBadge.innerText = "天黑天光任務";
+        modeBadge.className = "bg-cyan-400 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full";
+        currentMissionIndex = 0;
+        loadMission(currentMissionIndex);
+      }
+    }
+
+    // 載入當前任務
+    function loadMission(index) {
+      const mission = MISSIONS[index];
+      document.getElementById('siriTitle').innerText = mission.title;
+      document.getElementById('siriSpeechText').innerText = mission.siriPrompt;
+      playSiriPrompt();
+    }
+
+    // 播放 Siri 廣東話語音指示
+    function playSiriPrompt() {
+      playChimeSound();
+      if (currentGameMode === 'free') {
+        speakText("拍一下大按鈕，試下開燈同閂燈啦！");
+      } else {
+        const mission = MISSIONS[currentMissionIndex];
+        speakText(mission.siriSpeech);
+      }
+    }
+
+    // 點擊/拍擊巨型開關
+    function handleBigSwitchClick() {
+      tapCount++;
+      isLampOn = !isLampOn; // 切換燈光狀態
+      playSwitchClickSound();
+      updateUI();
+
+      if (isLampOn) {
+        playLampOnSound();
+        if (currentGameMode === 'free') {
+          speakText("開燈啦！亮晶晶！");
+        }
+      } else {
+        if (currentGameMode === 'free') {
+          speakText("閂燈啦！暗黑休息囉！");
+        }
+      }
+
+      // 判斷任務模式是否符合要求
+      if (currentGameMode === 'mission') {
+        const currentMission = MISSIONS[currentMissionIndex];
+        if (isLampOn === currentMission.targetState) {
+          setTimeout(() => {
+            playSuccessSound();
+            confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+            speakText("答對了！" + currentMission.explanation);
+            document.getElementById('modalTitle').innerText = "太棒了！答對了！";
+            document.getElementById('modalFeedbackText').innerText = currentMission.explanation;
+            document.getElementById('celebrationModal').classList.remove('hidden');
+          }, 450);
+        }
+      }
+    }
+
+    // 更新畫面 UI 視覺與光效
+    function updateUI() {
+      const roomContainer = document.getElementById('roomContainer');
+      const lightBeam = document.getElementById('lightBeam');
+      const glowCircle = document.getElementById('glowCircle');
+      const bulb = document.getElementById('bulb');
+      const bulbIcon = document.getElementById('bulbIcon');
+      const statusIcon = document.getElementById('statusIcon');
+      const statusText = document.getElementById('statusText');
+      const lampStatusBadge = document.getElementById('lampStatusBadge');
+      const storybook = document.getElementById('storybook');
+      const teddyBear = document.getElementById('teddyBear');
+      const nightSky = document.getElementById('nightSky');
+      const daySky = document.getElementById('daySky');
+      const bigSwitch = document.getElementById('bigSwitch');
+      const switchActionText = document.getElementById('switchActionText');
+      const miniSwitchLight = document.getElementById('miniSwitchLight');
+
+      if (isLampOn) {
+        // 開燈狀態
+        roomContainer.className = "room-container bg-amber-950/40 border-8 border-amber-500 rounded-3xl p-4 md:p-6 shadow-2xl relative overflow-hidden flex flex-col items-center justify-between min-h-[380px] md:min-h-[440px]";
+        lightBeam.style.opacity = "1";
+        glowCircle.style.opacity = "1";
+        bulb.className = "w-10 h-10 md:w-12 md:h-12 bg-yellow-300 rounded-full mx-auto -mt-2 border-2 border-yellow-100 shadow-lg flex items-center justify-center animate-pulse";
+        bulbIcon.className = "fa-solid fa-lightbulb text-amber-900 text-xl md:text-2xl";
+        
+        lampStatusBadge.className = "bg-amber-400 text-slate-950 text-base md:text-xl font-black px-6 py-2 rounded-2xl border-2 border-yellow-200 shadow-lg inline-flex items-center gap-2";
+        statusIcon.className = "fa-solid fa-sun text-amber-800 animate-spin-slow";
+        statusText.innerText = "房間現在：明亮中（檯燈已開）";
+
+        storybook.className = "transition-all duration-500 opacity-100 text-amber-100 text-xs md:text-sm font-black flex items-center gap-1 scale-105";
+        teddyBear.className = "transition-all duration-500 opacity-100 text-amber-100 text-xs md:text-sm font-black flex items-center gap-1 scale-105";
+
+        nightSky.style.opacity = "0";
+        daySky.style.opacity = "1";
+
+        // 開關轉為提示閂燈
+        bigSwitch.className = "big-switch-btn big-switch-btn-on bg-gradient-to-b from-emerald-500 to-emerald-700 border-8 border-emerald-300 w-64 h-24 md:w-80 md:h-28 text-white active:scale-95";
+        switchActionText.innerText = "拍一下閂燈";
+        miniSwitchLight.className = "w-4 h-4 rounded-full bg-emerald-400 border border-white shadow animate-ping";
+      } else {
+        // 閂燈狀態
+        roomContainer.className = "room-container bg-slate-950 border-8 border-slate-800 rounded-3xl p-4 md:p-6 shadow-2xl relative overflow-hidden flex flex-col items-center justify-between min-h-[380px] md:min-h-[440px]";
+        lightBeam.style.opacity = "0";
+        glowCircle.style.opacity = "0";
+        bulb.className = "w-10 h-10 md:w-12 md:h-12 bg-slate-800 rounded-full mx-auto -mt-2 border-2 border-slate-700 flex items-center justify-center";
+        bulbIcon.className = "fa-solid fa-bolt text-slate-600 text-lg";
+
+        lampStatusBadge.className = "bg-slate-800 text-slate-300 text-base md:text-xl font-black px-6 py-2 rounded-2xl border-2 border-slate-600 shadow-md inline-flex items-center gap-2";
+        statusIcon.className = "fa-solid fa-moon text-indigo-400";
+        statusText.innerText = "房間現在：暗黑中（檯燈已閂）";
+
+        storybook.className = "transition-all duration-500 opacity-25 text-amber-200 text-xs md:text-sm font-bold flex items-center gap-1";
+        teddyBear.className = "transition-all duration-500 opacity-25 text-amber-200 text-xs md:text-sm font-bold flex items-center gap-1";
+
+        nightSky.style.opacity = "1";
+        daySky.style.opacity = "0";
+
+        // 開關轉為提示開燈
+        bigSwitch.className = "big-switch-btn bg-gradient-to-b from-red-500 to-red-700 border-8 border-red-300 w-64 h-24 md:w-80 md:h-28 text-white active:scale-95";
+        switchActionText.innerText = "拍一下開燈";
+        miniSwitchLight.className = "w-4 h-4 rounded-full bg-red-500 border border-white shadow";
+      }
+    }
+
+    // 進到下一關任務
+    function nextMission() {
+      document.getElementById('celebrationModal').classList.add('hidden');
+      if (currentMissionIndex < MISSIONS.length - 1) {
+        currentMissionIndex++;
+        loadMission(currentMissionIndex);
+      } else {
+        // 全通關
+        currentMissionIndex = 0;
+        speakText("恭喜你！完成了所有天黑天光拍擊任務！太厲害了！");
+        switchGameMode('free');
+      }
+    }
+
+    // 廣東話 TTS 語音發音 (針對 SEN 學生設定語速與音調)
+    function speakText(text) {
+      if (!audioEnabled) return;
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-HK'; // 廣東話
+        utterance.rate = 0.85;    // 調慢語速
+        utterance.pitch = 1.1;
+
+        const voices = window.speechSynthesis.getVoices();
+        const hkVoice = voices.find(v => v.lang.includes('HK') || v.lang.includes('yue') || v.lang.includes('zh-HK'));
+        if (hkVoice) utterance.voice = hkVoice;
+
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // 切換音效/語音狀態
+    function toggleAudioPrompt() {
+      audioEnabled = !audioEnabled;
+      const icon = document.getElementById('soundIcon');
+      if (audioEnabled) {
+        icon.className = "fa-solid fa-volume-high text-emerald-400";
+        speakText("語音提示已開啟");
+      } else {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400";
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      }
+    }
+
+    // Web Audio API 聲效合成器
+    function playSwitchClickSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(320, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(90, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.08);
+      } catch (e) {}
+    }
+
+    function playLampOnSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1046.50, ctx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      } catch (e) {}
+    }
+
+    function playChimeSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+      } catch (e) {}
+    }
+
+    function playSuccessSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.08 + 0.25);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + i * 0.08);
+          osc.stop(ctx.currentTime + i * 0.08 + 0.25);
+        });
+      } catch (e) {}
+    }
+  </script>
+</body>
+</html>
