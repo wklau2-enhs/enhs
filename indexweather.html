@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>出門大搜查：天氣與裝備配對</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap');
+    
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 50%, #fef3c7 100%);
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .card-bounce {
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .card-bounce:active {
+      transform: scale(0.92);
+    }
+
+    .drop-zone {
+      transition: all 0.3s ease;
+      background-pattern: radial-gradient(#cbd5e1 2px, transparent 2px);
+      background-size: 16px 16px;
+    }
+
+    .drop-zone.drag-over {
+      background-color: #fef08a;
+      border-color: #eab308;
+      transform: scale(1.03);
+    }
+
+    .siri-pulse {
+      animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+      70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+    }
+
+    .selected-card {
+      ring: 6px solid #3b82f6;
+      box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.5);
+      transform: translateY(-8px) scale(1.05);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-3 md:p-6 text-slate-800">
+
+  <header class="max-w-5xl mx-auto w-full bg-white/90 backdrop-blur rounded-3xl p-4 shadow-xl border-4 border-blue-200 flex flex-wrap items-center justify-between gap-4 mb-4">
+    <div class="flex items-center gap-3">
+      <div class="bg-blue-500 text-white w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-lg">
+        <i class="fa-solid fa-cloud-sun"></i>
+      </div>
+      <div>
+        <h1 class="text-2xl md:text-3xl font-black text-blue-900 tracking-wide">出門大搜查</h1>
+        <p class="text-sm md:text-base text-blue-600 font-bold">聆聽 Siri 指示，完成天氣與裝備配對</p>
+      </div>
+    </div>
+
+    <!-- 關卡與重播按鈕 -->
+    <div class="flex items-center gap-3">
+      <div class="bg-amber-100 border-2 border-amber-300 rounded-2xl px-4 py-2 flex items-center gap-2">
+        <i class="fa-solid fa-star text-amber-500 text-2xl"></i>
+        <span id="scoreText" class="text-xl font-black text-amber-800">第 1 / 4 關</span>
+      </div>
+      <button onclick="resetCurrentLevel()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-3 rounded-2xl border-2 border-slate-300 flex items-center gap-2 text-lg active:scale-95 transition">
+        <i class="fa-solid fa-rotate-right"></i>
+        <span>重來</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto w-full flex-1 flex flex-col gap-6">
+
+    <section class="bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden border-4 border-indigo-400">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+        
+        <!-- Siri 按鈕區 -->
+        <div class="flex items-center gap-4">
+          <button id="siriBtn" onclick="playSiriAudio()" class="siri-pulse bg-gradient-to-tr from-cyan-400 via-blue-500 to-purple-500 hover:brightness-110 text-white w-20 h-20 md:w-24 md:h-24 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-white active:scale-90 transition">
+            <i class="fa-solid fa-microphone text-3xl md:text-4xl"></i>
+            <span class="text-xs font-black mt-1">按一下問 Siri</span>
+          </button>
+          <div>
+            <span class="bg-indigo-500/50 text-indigo-200 text-xs font-bold px-3 py-1 rounded-full border border-indigo-300/30">語音提示助手</span>
+            <h2 id="siriTitle" class="text-xl md:text-2xl font-black text-cyan-300 mt-1">按下左側按鈕聽 Siri 講話</h2>
+          </div>
+        </div>
+
+        <!-- Siri 對話框 -->
+        <div class="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 w-full md:w-auto flex-1 min-h-[80px] flex items-center justify-center text-center">
+          <p id="siriSpeechText" class="text-lg md:text-2xl font-bold text-yellow-200 tracking-wide leading-relaxed">
+            「按下 Siri 按鈕，聽聽看今日天氣點樣？」
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="bg-white rounded-3xl p-6 md:p-8 shadow-xl border-4 border-slate-200 flex flex-col gap-8">
+      
+      <!-- 句子一：今天天氣 _____ -->
+      <div class="flex flex-col md:flex-row items-center justify-center gap-4 bg-amber-50 p-4 md:p-6 rounded-2xl border-2 border-amber-200">
+        <div class="flex items-center gap-3">
+          <span class="bg-amber-500 text-white text-xl font-black w-10 h-10 rounded-full flex items-center justify-center">1</span>
+          <span class="text-2xl md:text-4xl font-black text-slate-800 tracking-wider">今天天氣</span>
+        </div>
+
+        <!-- 天氣放置區 -->
+        <div id="weatherDropZone" 
+             onclick="handleZoneClick('weather')"
+             ondragover="allowDrop(event)" 
+             ondragleave="removeDragOver(event)"
+             ondrop="dropCard(event, 'weather')"
+             class="drop-zone w-48 h-32 md:w-56 md:h-36 border-4 border-dashed border-amber-400 rounded-2xl flex flex-col items-center justify-center bg-white cursor-pointer hover:border-amber-500 transition relative group shadow-inner">
+             <div id="weatherPlaceholder" class="text-center p-2">
+               <i class="fa-regular fa-square-plus text-4xl text-amber-300 group-hover:scale-110 transition"></i>
+               <p class="text-sm font-bold text-amber-500 mt-1">按此或拖放天氣圖卡</p>
+             </div>
+             <div id="weatherCardContent" class="w-full h-full hidden"></div>
+        </div>
+      </div>
+
+      <!-- 句子二：需要帶備 _____ -->
+      <div class="flex flex-col md:flex-row items-center justify-center gap-4 bg-sky-50 p-4 md:p-6 rounded-2xl border-2 border-sky-200">
+        <div class="flex items-center gap-3">
+          <span class="bg-sky-500 text-white text-xl font-black w-10 h-10 rounded-full flex items-center justify-center">2</span>
+          <span class="text-2xl md:text-4xl font-black text-slate-800 tracking-wider">需要帶備</span>
+        </div>
+
+        <!-- 道具放置區 -->
+        <div id="itemDropZone" 
+             onclick="handleZoneClick('item')"
+             ondragover="allowDrop(event)" 
+             ondragleave="removeDragOver(event)"
+             ondrop="dropCard(event, 'item')"
+             class="drop-zone w-48 h-32 md:w-56 md:h-36 border-4 border-dashed border-sky-400 rounded-2xl flex flex-col items-center justify-center bg-white cursor-pointer hover:border-sky-500 transition relative group shadow-inner">
+             <div id="itemPlaceholder" class="text-center p-2">
+               <i class="fa-regular fa-square-plus text-4xl text-sky-300 group-hover:scale-110 transition"></i>
+               <p class="text-sm font-bold text-sky-500 mt-1">按此或拖放道具圖卡</p>
+             </div>
+             <div id="itemCardContent" class="w-full h-full hidden"></div>
+        </div>
+      </div>
+
+      <!-- 檢查/提交按鈕 -->
+      <div class="flex justify-center mt-2">
+        <button id="checkBtn" onclick="checkAnswers()" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-2xl md:text-3xl font-black px-10 py-4 rounded-3xl shadow-xl border-4 border-white active:scale-95 transition flex items-center gap-3">
+          <i class="fa-solid fa-circle-check"></i>
+          <span>完成提交</span>
+        </button>
+      </div>
+
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- 天氣圖卡庫 -->
+      <div class="bg-amber-100/80 rounded-3xl p-5 border-4 border-amber-300 shadow-lg">
+        <div class="flex items-center gap-2 mb-3">
+          <i class="fa-solid fa-sun text-amber-600 text-2xl"></i>
+          <h3 class="text-xl font-black text-amber-900">天氣圖卡（請選擇一張）</h3>
+        </div>
+        <div id="weatherDeck" class="grid grid-cols-2 gap-3">
+          <!-- 圖卡動態生成 -->
+        </div>
+      </div>
+
+      <!-- 道具圖卡庫 -->
+      <div class="bg-sky-100/80 rounded-3xl p-5 border-4 border-sky-300 shadow-lg">
+        <div class="flex items-center gap-2 mb-3">
+          <i class="fa-solid fa-briefcase text-sky-600 text-2xl"></i>
+          <h3 class="text-xl font-black text-sky-900">道具圖卡（請選擇一張）</h3>
+        </div>
+        <div id="itemDeck" class="grid grid-cols-3 md:grid-cols-3 gap-3">
+          <!-- 圖卡動態生成 -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <div id="celebrationModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl p-8 max-w-md w-full text-center border-8 border-yellow-400 shadow-2xl animate-bounce-in">
+      <div class="text-7xl mb-4">🎉</div>
+      <h2 class="text-3xl md:text-4xl font-black text-emerald-600 mb-2">太棒了！答對了！</h2>
+      <p id="modalFeedbackText" class="text-xl font-bold text-slate-700 mb-6">你成功幫忙選擇了合適的裝備！</p>
+      
+      <div class="flex flex-col gap-3">
+        <button id="nextLevelBtn" onclick="nextLevel()" class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-2xl font-black py-4 px-6 rounded-2xl shadow-lg border-2 border-white active:scale-95 transition">
+          下一關 <i class="fa-solid fa-arrow-right ml-2"></i>
+        </button>
+        <button onclick="playSiriAudio()" class="bg-amber-100 text-amber-800 font-bold py-3 px-4 rounded-xl hover:bg-amber-200 transition">
+          <i class="fa-solid fa-volume-high mr-2"></i>再聽一次 Siri 說話
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 天氣數據
+    const WEATHER_CARDS = [
+      { id: 'sun', name: '太陽', icon: 'fa-sun', color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-400' },
+      { id: 'rain', name: '下雨', icon: 'fa-cloud-showers-heavy', color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-400' },
+      { id: 'cold', name: '冷', icon: 'fa-snowflake', color: 'text-cyan-500', bg: 'bg-cyan-50', border: 'border-cyan-400' },
+      { id: 'hot', name: '熱', icon: 'fa-fire-flame-curved', color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-400' }
+    ];
+
+    // 道具數據
+    const ITEM_CARDS = [
+      { id: 'coat', name: '外套', icon: 'fa-shirt', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-400' },
+      { id: 'umbrella', name: '雨傘', icon: 'fa-umbrella', color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-400' },
+      { id: 'sunglasses', name: '太陽眼鏡', icon: 'fa-glasses', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-400' }
+    ];
+
+    // 關卡設計 (與 Siri 廣東話語音串聯)
+    const LEVELS = [
+      {
+        level: 1,
+        siriPrompt: '「Siri 話：今日出面落大雨呀！上記住帶遮呀！」',
+        siriVoiceText: 'Siri 話：今日出面落大雨呀！記住帶遮呀！',
+        correctWeather: 'rain',
+        correctItem: 'umbrella',
+        explanation: '下雨天要帶雨傘！'
+      },
+      {
+        level: 2,
+        siriPrompt: '「Siri 話：今日天氣好冷，得 12 度呀！」',
+        siriVoiceText: 'Siri 話：今日天氣好冷，得 12 度呀！出門要穿外套！',
+        correctWeather: 'cold',
+        correctItem: 'coat',
+        explanation: '天氣冷要穿外套保暖！'
+      },
+      {
+        level: 3,
+        siriPrompt: '「Siri 話：今日太陽好猛烈呀！好刺眼！」',
+        siriVoiceText: 'Siri 話：今日太陽好猛烈呀！好刺眼，帶太陽眼鏡啦！',
+        correctWeather: 'sun',
+        correctItem: 'sunglasses',
+        explanation: '太陽猛烈要戴太陽眼鏡保護眼睛！'
+      },
+      {
+        level: 4,
+        siriPrompt: '「Siri 話：今日天氣好熱呀！氣溫 34 度！」',
+        siriVoiceText: 'Siri 話：今日天氣好熱呀！氣溫 34 度，戴太陽眼鏡防曬啦！',
+        correctWeather: 'hot',
+        correctItem: 'sunglasses',
+        explanation: '天氣熱且太陽大，要戴太陽眼鏡！'
+      }
+    ];
+
+    let currentLevelIndex = 0;
+    let selectedWeatherId = null;
+    let selectedItemId = null;
+    let activeSelectedCard = null; // 用於點擊點選模式
+
+    window.onload = () => {
+      initLevel();
+    };
+
+    function initLevel() {
+      const currentLevel = LEVELS[currentLevelIndex];
+      selectedWeatherId = null;
+      selectedItemId = null;
+      activeSelectedCard = null;
+
+      // 更新關卡標題與 Siri 對話框
+      document.getElementById('scoreText').innerText = `第 ${currentLevel.level} / ${LEVELS.length} 關`;
+      document.getElementById('siriSpeechText').innerText = currentLevel.siriPrompt;
+
+      // 清空放置區
+      resetDropZone('weather');
+      resetDropZone('item');
+
+      // 渲染圖卡
+      renderCards();
+
+      // 自動播放 Siri 語音提示
+      setTimeout(() => {
+        playSiriAudio();
+      }, 500);
+    }
+
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-HK'; // 廣東話
+        utterance.rate = 0.85;    // 專為智障學生調慢語速
+        utterance.pitch = 1.1;
+
+        // 搜尋最佳廣東話語音
+        const voices = window.speechSynthesis.getVoices();
+        const hkVoice = voices.find(v => v.lang.includes('HK') || v.lang.includes('yue') || v.lang.includes('zh-HK'));
+        if (hkVoice) utterance.voice = hkVoice;
+
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function playSiriAudio() {
+      const currentLevel = LEVELS[currentLevelIndex];
+      playChimeSound();
+      speakText(currentLevel.siriVoiceText);
+    }
+
+    function playChimeSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3); // A5
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
+      } catch (e) {
+        console.log('Audio Context error', e);
+      }
+    }
+
+    function playSuccessSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.1 + 0.3);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + i * 0.1);
+          osc.stop(ctx.currentTime + i * 0.1 + 0.3);
+        });
+      } catch (e) {}
+    }
+
+    function renderCards() {
+      const weatherDeck = document.getElementById('weatherDeck');
+      const itemDeck = document.getElementById('itemDeck');
+
+      weatherDeck.innerHTML = '';
+      itemDeck.innerHTML = '';
+
+      WEATHER_CARDS.forEach(card => {
+        const el = createCardElement(card, 'weather');
+        weatherDeck.appendChild(el);
+      });
+
+      ITEM_CARDS.forEach(card => {
+        const el = createCardElement(card, 'item');
+        itemDeck.appendChild(el);
+      });
+    }
+
+    function createCardElement(card, type) {
+      const div = document.createElement('div');
+      div.className = `card-bounce ${card.bg} ${card.border} border-4 rounded-2xl p-3 flex flex-col items-center justify-center cursor-pointer shadow-md hover:shadow-xl transition select-none min-h-[100px]`;
+      div.draggable = true;
+      div.id = `card-${type}-${card.id}`;
+
+      div.innerHTML = `
+        <i class="fa-solid ${card.icon} text-4xl ${card.color} mb-1 pointer-events-none"></i>
+        <span class="text-xl font-black text-slate-800 pointer-events-none">${card.name}</span>
+      `;
+
+      // 拖放事件
+      div.ondragstart = (e) => {
+        e.dataTransfer.setData('text/plain', JSON.stringify({ id: card.id, type: type }));
+        speakText(card.name);
+      };
+
+      // 點擊事件 (針對細肌肉能力較弱、不擅長拖放的學生)
+      div.onclick = () => {
+        speakText(card.name);
+        selectCardDirectly(card, type);
+      };
+
+      return div;
+    }
+
+    function allowDrop(e) {
+      e.preventDefault();
+      e.currentTarget.classList.add('drag-over');
+    }
+
+    function removeDragOver(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    function dropCard(e, targetType) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      
+      if (data.type === targetType) {
+        placeCardInZone(data.id, targetType);
+      } else {
+        speakText('請將正確類型的圖卡放這裡');
+      }
+    }
+
+    function selectCardDirectly(card, cardType) {
+      placeCardInZone(card.id, cardType);
+    }
+
+    function handleZoneClick(zoneType) {
+      if (zoneType === 'weather' && selectedWeatherId) {
+        resetDropZone('weather');
+        selectedWeatherId = null;
+      } else if (zoneType === 'item' && selectedItemId) {
+        resetDropZone('item');
+        selectedItemId = null;
+      }
+    }
+
+    function placeCardInZone(cardId, type) {
+      playChimeSound();
+      if (type === 'weather') {
+        selectedWeatherId = cardId;
+        const card = WEATHER_CARDS.find(c => c.id === cardId);
+        renderZoneContent('weatherDropZone', 'weatherPlaceholder', 'weatherCardContent', card);
+      } else {
+        selectedItemId = cardId;
+        const card = ITEM_CARDS.find(c => c.id === cardId);
+        renderZoneContent('itemDropZone', 'itemPlaceholder', 'itemCardContent', card);
+      }
+    }
+
+    function renderZoneContent(zoneId, placeholderId, contentId, card) {
+      document.getElementById(placeholderId).classList.add('hidden');
+      const contentEl = document.getElementById(contentId);
+      contentEl.classList.remove('hidden');
+      contentEl.innerHTML = `
+        <div class="w-full h-full ${card.bg} border-2 ${card.border} rounded-xl flex items-center justify-center gap-3 p-2 shadow-sm">
+          <i class="fa-solid ${card.icon} text-3xl md:text-4xl ${card.color}"></i>
+          <span class="text-2xl font-black text-slate-800">${card.name}</span>
+        </div>
+      `;
+    }
+
+    function resetDropZone(type) {
+      if (type === 'weather') {
+        document.getElementById('weatherPlaceholder').classList.remove('hidden');
+        document.getElementById('weatherCardContent').classList.add('hidden');
+        document.getElementById('weatherCardContent').innerHTML = '';
+        selectedWeatherId = null;
+      } else {
+        document.getElementById('itemPlaceholder').classList.remove('hidden');
+        document.getElementById('itemCardContent').classList.add('hidden');
+        document.getElementById('itemCardContent').innerHTML = '';
+        selectedItemId = null;
+      }
+    }
+
+    function checkAnswers() {
+      const currentLevel = LEVELS[currentLevelIndex];
+
+      if (!selectedWeatherId || !selectedItemId) {
+        speakText('請先選擇天氣圖卡和道具圖卡');
+        return;
+      }
+
+      if (selectedWeatherId === currentLevel.correctWeather && selectedItemId === currentLevel.correctItem) {
+        // 答對處理
+        playSuccessSound();
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        speakText('答對了！你真棒！' + currentLevel.explanation);
+
+        document.getElementById('modalFeedbackText').innerText = currentLevel.explanation;
+        document.getElementById('celebrationModal').classList.remove('hidden');
+      } else {
+        // 答錯提示 (正向鼓勵)
+        speakText('再試一次，聽聽 Siri 點講？');
+        shakeElement(document.getElementById('checkBtn'));
+      }
+    }
+
+    function shakeElement(el) {
+      el.classList.add('animate-bounce');
+      setTimeout(() => el.classList.remove('animate-bounce'), 1000);
+    }
+
+    function nextLevel() {
+      document.getElementById('celebrationModal').classList.add('hidden');
+      if (currentLevelIndex < LEVELS.length - 1) {
+        currentLevelIndex++;
+        initLevel();
+      } else {
+        // 全通關
+        currentLevelIndex = 0;
+        speakText('恭喜你完成所有關卡！太厲害了！');
+        initLevel();
+      }
+    }
+
+    function resetCurrentLevel() {
+      initLevel();
+    }
+  </script>
+</body>
+</html>
