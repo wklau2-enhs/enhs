@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>會動腦筋的小老鼠 - 單鍵拍掣聽聲反應訓練</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #000000;
+            color: #FFFFFF;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        /* Red Switch Normal State */
+        .red-switch-btn {
+            background: radial-gradient(circle at 35% 35%, #FF4D4D, #CC0000, #880000);
+            border: 10px solid #FFFFFF;
+            box-shadow: 0 0 40px rgba(255, 0, 0, 0.8), inset 0 -10px 20px rgba(0,0,0,0.6);
+            transition: all 0.2s ease;
+        }
+
+        .red-switch-btn:active:not(:disabled), .switch-active {
+            transform: scale(0.92);
+            box-shadow: 0 0 70px rgba(255, 255, 0, 1), inset 0 5px 15px rgba(0,0,0,0.8);
+            border-color: #FFE600;
+        }
+
+        /* Red Switch Disabled State (Playing audio / Locked) */
+        .red-switch-btn:disabled, .switch-locked {
+            background: radial-gradient(circle at 35% 35%, #666666, #444444, #222222) !important;
+            border-color: #888888 !important;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2) !important;
+            opacity: 0.6;
+            cursor: not-allowed !important;
+            transform: none !important;
+        }
+
+        /* High Contrast Audio Visualizer Pulse */
+        .audio-playing-pulse {
+            animation: pulse-ring 1.2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(255, 230, 0, 0.9); }
+            70% { box-shadow: 0 0 0 40px rgba(255, 230, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 230, 0, 0); }
+        }
+
+        /* High contrast focus boundary for low vision */
+        .focus-text-box {
+            border: 6px dashed #00FF66;
+            background-color: #050505;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col justify-between p-4 bg-black text-white">
+
+    <!-- Teacher Dashboard & Control Bar -->
+    <header class="bg-gray-900 border-b-4 border-yellow-400 p-3 rounded-2xl flex justify-between items-center z-20 shrink-0">
+        <div class="flex items-center space-x-3">
+            <span class="text-3xl">🔴</span>
+            <div>
+                <h1 class="text-xl md:text-2xl font-black text-yellow-300">單鍵拍掣聽聲反應訓練（結尾問答重播版）</h1>
+                <p class="text-xs md:text-sm text-cyan-300 font-bold">課文：《會動腦筋的小老鼠》</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <!-- Student Reaction Observation Counter -->
+            <div class="hidden sm:flex bg-black border-2 border-green-400 px-3 py-1 rounded-xl items-center space-x-2">
+                <span class="text-xs text-green-300 font-bold">觀察聲源反應:</span>
+                <span id="responseCount" class="text-xl font-black text-yellow-300">0 次</span>
+                <button onclick="recordStudentResponse()" class="bg-green-600 hover:bg-green-500 text-white text-xs font-black px-2 py-1 rounded-lg border border-white active:scale-95 transition">
+                    + 點擊記錄
+                </button>
+            </div>
+
+            <!-- Repeat Current Sentence -->
+            <button id="repeatBtn" onclick="repeatCurrentSentence()" class="bg-cyan-600 hover:bg-cyan-500 text-white border-2 border-white px-3 py-2 rounded-xl text-sm font-black flex items-center space-x-1 active:scale-95 transition">
+                <i class="fa-solid fa-volume-high"></i>
+                <span>重播此句</span>
+            </button>
+
+            <!-- Reset All -->
+            <button onclick="resetLesson()" class="bg-amber-500 hover:bg-amber-400 text-black border-2 border-white px-3 py-2 rounded-xl text-sm font-black flex items-center space-x-1 active:scale-95 transition">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span>重頭開始</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Focus Text Area for Low Vision Students -->
+    <main class="flex-1 my-3 flex flex-col items-center justify-center relative px-2">
+        
+        <!-- Large High Contrast Text Display Card -->
+        <div id="textContainer" class="w-full max-w-4xl focus-text-box rounded-3xl p-6 md:p-10 text-center flex flex-col items-center justify-center shadow-2xl relative min-h-[220px]">
+            
+            <!-- Sentence Index Badge -->
+            <span id="sentenceBadge" class="absolute -top-5 bg-yellow-400 text-black text-lg md:text-xl font-black px-6 py-1 rounded-full border-4 border-white shadow-lg">
+                準備就緒
+            </span>
+
+            <!-- High Contrast Text -->
+            <p id="displayText" class="text-3xl sm:text-4xl md:text-5xl font-black text-yellow-300 tracking-wide leading-relaxed">
+                請按下紅色拍掣，開始收聽故事。
+            </p>
+
+            <!-- Visual Sound Indicator -->
+            <div id="soundWaveIcon" class="hidden mt-4 text-cyan-400 text-4xl animate-bounce">
+                <i class="fa-solid fa-waveform-lines mr-2"></i>
+                <span class="text-2xl font-bold text-white">正在播放語音，請認真聆聽...</span>
+            </div>
+        </div>
+
+        <!-- Press Switch Cue Box -->
+        <div class="mt-4 bg-gray-900 border-2 border-gray-700 px-6 py-2 rounded-2xl flex items-center space-x-3">
+            <span class="text-yellow-400 text-xl"><i class="fa-solid fa-shield-halved"></i></span>
+            <span id="statusInstruction" class="text-sm md:text-base font-bold text-gray-200">
+                按壓紅色拍掣，或按電腦 <kbd class="bg-gray-700 px-2 py-0.5 rounded text-yellow-300 font-mono">空白鍵 Space</kbd> / <kbd class="bg-gray-700 px-2 py-0.5 rounded text-yellow-300 font-mono">Enter</kbd>
+            </span>
+        </div>
+    </main>
+
+    <!-- Giant Interactive Red Switch Button (Red Switch) -->
+    <footer class="flex flex-col items-center justify-center shrink-0 mb-2">
+        <button id="redSwitchBtn" onclick="handleSwitchPress()" class="red-switch-btn w-44 h-44 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-full flex flex-col items-center justify-center text-white cursor-pointer select-none active:scale-95">
+            <i id="switchIcon" class="fa-solid fa-hand-pointer text-5xl sm:text-6xl md:text-7xl mb-1 drop-shadow-md"></i>
+            <span id="switchText" class="text-xl sm:text-2xl font-black tracking-widest drop-shadow-md">拍此處</span>
+            <span id="switchSubtext" class="text-xs font-bold text-yellow-200 opacity-90">(按下聽下一句)</span>
+        </button>
+    </footer>
+
+    <script>
+        const storySentences = [
+            "動物在一起修公路。",
+            "一塊巨大的石頭在路中間。",
+            "兔子想搬走大石頭，用手向前推，又用繩子向後拉，可是石頭一動也不動。",
+            "牠們請了大象來幫忙，還是提不動。",
+            "這時，一隻小老鼠說﹕「我有辦法！大家拿鏟子來吧！」",
+            "動物一齊動手，有的挖土，有的運土。",
+            "最後，牠們成功地令大石頭埋進地下啦！所有動物都說﹕「小老鼠，你真聰明！」"
+        ];
+
+        let currentIndex = -1;
+        let isSpeaking = false;
+        let isAskingRepeat = false; // Flag for end-of-story repeat prompt state
+        let responseCounter = 0;
+        let isKeyPressed = false; // Flag to prevent holding down keys continuously
+        const synth = window.speechSynthesis;
+
+        // Key Elements
+        const displayText = document.getElementById('displayText');
+        const sentenceBadge = document.getElementById('sentenceBadge');
+        const redSwitchBtn = document.getElementById('redSwitchBtn');
+        const soundWaveIcon = document.getElementById('soundWaveIcon');
+        const textContainer = document.getElementById('textContainer');
+        const statusInstruction = document.getElementById('statusInstruction');
+        const switchIcon = document.getElementById('switchIcon');
+        const switchText = document.getElementById('switchText');
+        const switchSubtext = document.getElementById('switchSubtext');
+        const repeatBtn = document.getElementById('repeatBtn');
+
+        function resetLesson() {
+            synth.cancel();
+            currentIndex = -1;
+            isAskingRepeat = false;
+            unlockSwitch();
+            displayText.innerText = "請按下紅色拍掣，開始收聽故事。";
+            displayText.className = "text-3xl sm:text-4xl md:text-5xl font-black text-yellow-300 tracking-wide leading-relaxed";
+            sentenceBadge.innerText = "準備就緒";
+            soundWaveIcon.classList.add('hidden');
+            textContainer.classList.remove('audio-playing-pulse');
+        }
+
+        function handleSwitchPress() {
+            // Guard clause: Ignore press if audio is playing
+            if (isSpeaking) {
+                return;
+            }
+
+            // If we are in the "Ask Repeat" prompt state, pressing switch will restart story
+            if (isAskingRepeat) {
+                isAskingRepeat = false;
+                currentIndex = 0;
+                lockSwitch();
+                speakCurrentSentence();
+                return;
+            }
+
+            // Lock switch immediately to protect against continuous presses
+            lockSwitch();
+
+            // Advance to next sentence
+            currentIndex++;
+            if (currentIndex >= storySentences.length) {
+                // If story is done, prompt for repeat
+                askRepeatPrompt();
+                return;
+            }
+
+            speakCurrentSentence();
+        }
+
+        function lockSwitch() {
+            isSpeaking = true;
+            redSwitchBtn.disabled = true;
+            repeatBtn.disabled = true;
+            redSwitchBtn.classList.add('switch-locked');
+            switchIcon.className = "fa-solid fa-volume-high text-5xl sm:text-6xl md:text-7xl mb-1 opacity-50";
+            switchText.innerText = "正在播放";
+            switchSubtext.innerText = "(請完整聆聽)";
+            statusInstruction.innerHTML = "<span class='text-yellow-300 font-black animate-pulse'>🔒 語音播放中，拍掣已鎖定，待播放完畢後方可拍下一句。</span>";
+        }
+
+        function unlockSwitch() {
+            isSpeaking = false;
+            redSwitchBtn.disabled = false;
+            repeatBtn.disabled = false;
+            redSwitchBtn.classList.remove('switch-locked');
+
+            if (isAskingRepeat) {
+                // Switch styling when asking to replay
+                switchIcon.className = "fa-solid fa-rotate-right text-5xl sm:text-6xl md:text-7xl mb-1 drop-shadow-md text-yellow-300";
+                switchText.innerText = "再聽一次";
+                switchSubtext.innerText = "(拍此處重新收聽)";
+                statusInstruction.innerHTML = "<span class='text-green-300 font-black'>拍按紅色拍掣即可「再次聆聽故事」！</span>";
+            } else {
+                // Normal reading state switch styling
+                switchIcon.className = "fa-solid fa-hand-pointer text-5xl sm:text-6xl md:text-7xl mb-1 drop-shadow-md";
+                switchText.innerText = "拍此處";
+                switchSubtext.innerText = "(按下聽下一句)";
+                statusInstruction.innerHTML = "按壓紅色拍掣，或按電腦 <kbd class='bg-gray-700 px-2 py-0.5 rounded text-yellow-300 font-mono'>空白鍵 Space</kbd> / <kbd class='bg-gray-700 px-2 py-0.5 rounded text-yellow-300 font-mono'>Enter</kbd>";
+            }
+        }
+
+        function speakCurrentSentence() {
+            if (currentIndex < 0 || currentIndex >= storySentences.length) {
+                unlockSwitch();
+                return;
+            }
+
+            // Clear synth queue
+            synth.cancel();
+
+            const text = storySentences[currentIndex];
+            
+            // Update UI Text
+            displayText.innerText = text;
+            sentenceBadge.innerText = `第 ${currentIndex + 1} / ${storySentences.length} 句`;
+
+            // Adjust font size dynamically for long sentences
+            if (text.length > 25) {
+                displayText.className = "text-2xl sm:text-3xl md:text-4xl font-black text-yellow-300 tracking-wide leading-relaxed";
+            } else {
+                displayText.className = "text-3xl sm:text-4xl md:text-5xl font-black text-yellow-300 tracking-wide leading-relaxed";
+            }
+
+            // Create Speech Synthesis Utterance
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-HK';
+            utterance.rate = 0.75; // Slower speed for Special Needs listening clarity
+            utterance.pitch = 1.1;
+
+            utterance.onstart = function() {
+                soundWaveIcon.classList.remove('hidden');
+                textContainer.classList.add('audio-playing-pulse');
+            };
+
+            utterance.onend = function() {
+                soundWaveIcon.classList.add('hidden');
+                textContainer.classList.remove('audio-playing-pulse');
+                
+                // If this was the last sentence, trigger the "Ask Repeat" prompt after a brief pause
+                if (currentIndex === storySentences.length - 1) {
+                    setTimeout(() => {
+                        askRepeatPrompt();
+                    }, 800);
+                } else {
+                    unlockSwitch();
+                }
+            };
+
+            utterance.onerror = function() {
+                soundWaveIcon.classList.add('hidden');
+                textContainer.classList.remove('audio-playing-pulse');
+                unlockSwitch();
+            };
+
+            synth.speak(utterance);
+        }
+
+        function askRepeatPrompt() {
+            isAskingRepeat = true;
+            lockSwitch();
+
+            const promptText = "故事播放完畢啦！你想再次聆聽嗎？";
+            displayText.innerText = promptText;
+            displayText.className = "text-3xl sm:text-4xl md:text-5xl font-black text-cyan-300 tracking-wide leading-relaxed animate-pulse";
+            sentenceBadge.innerText = "故事結束";
+
+            const utterance = new SpeechSynthesisUtterance(promptText);
+            utterance.lang = 'zh-HK';
+            utterance.rate = 0.8;
+            utterance.pitch = 1.1;
+
+            utterance.onstart = function() {
+                soundWaveIcon.classList.remove('hidden');
+                textContainer.classList.add('audio-playing-pulse');
+            };
+
+            utterance.onend = function() {
+                soundWaveIcon.classList.add('hidden');
+                textContainer.classList.remove('audio-playing-pulse');
+                unlockSwitch(); // Safely unlock button so student can press to replay
+            };
+
+            utterance.onerror = function() {
+                soundWaveIcon.classList.add('hidden');
+                textContainer.classList.remove('audio-playing-pulse');
+                unlockSwitch();
+            };
+
+            synth.speak(utterance);
+        }
+
+        function repeatCurrentSentence() {
+            if (isSpeaking) return;
+
+            if (isAskingRepeat) {
+                askRepeatPrompt();
+            } else if (currentIndex === -1) {
+                handleSwitchPress();
+            } else {
+                lockSwitch();
+                speakCurrentSentence();
+            }
+        }
+
+        function recordStudentResponse() {
+            responseCounter++;
+            document.getElementById('responseCount').innerText = `${responseCounter} 次`;
+        }
+
+        window.addEventListener('keydown', function(e) {
+            if (e.code === 'Space' || e.code === 'Enter' || e.key === '1') {
+                e.preventDefault();
+                
+                if (!isKeyPressed && !isSpeaking) {
+                    isKeyPressed = true;
+                    handleSwitchPress();
+                }
+            }
+        });
+
+        window.addEventListener('keyup', function(e) {
+            if (e.code === 'Space' || e.code === 'Enter' || e.key === '1') {
+                isKeyPressed = false;
+            }
+        });
+
+        // Initialize on Load
+        window.onload = function() {
+            resetLesson();
+        };
+    </script>
+</body>
+</html>
