@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>會動腦筋的小老鼠 - 多感官故事與書寫訓練</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #000000;
+            color: #FFFFFF;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        /* High contrast neon animations */
+        .neon-border {
+            border: 8px dashed #00FF66;
+            box-shadow: 0 0 25px rgba(0, 255, 102, 0.8);
+            animation: border-pulse 1.8s infinite alternate;
+        }
+
+        @keyframes border-pulse {
+            0% { box-shadow: 0 0 15px rgba(0, 255, 102, 0.6); border-color: #00FF66; }
+            100% { box-shadow: 0 0 35px rgba(255, 230, 0, 0.9); border-color: #FFE600; }
+        }
+
+        /* Canvas interaction layer */
+        canvas {
+            touch-action: none;
+            cursor: pointer;
+        }
+
+        /* Smooth Stone Sinking Animations */
+        .stone-drop-animation {
+            transition: transform 3.5s cubic-bezier(0.5, 0, 0.75, 0), opacity 2.5s ease-out;
+            transform: translateY(280px) scale(0.5) rotate(-5deg);
+            opacity: 0.1;
+        }
+
+        .stone-shake {
+            animation: shake 0.4s infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(3px, 1px) rotate(0deg); }
+            20% { transform: translate(-3px, -2px) rotate(-2deg); }
+            40% { transform: translate(-4px, 0px) rotate(2deg); }
+            60% { transform: translate(4px, 2px) rotate(0deg); }
+            80% { transform: translate(2px, -1px) rotate(1deg); }
+            100% { transform: translate(-2px, 2px) rotate(-1deg); }
+        }
+
+        .pulse-btn {
+            animation: pulse-ring 1.5s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(234, 179, 8, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col bg-black text-white">
+
+    <!-- Top Header Bar -->
+    <header class="bg-gray-900 border-b-8 border-yellow-400 p-3 flex justify-between items-center z-20 shrink-0">
+        <div class="flex items-center space-x-3">
+            <span class="text-4xl">🐭🪨</span>
+            <div>
+                <h1 class="text-2xl md:text-3xl font-black text-yellow-300 tracking-wide">會動腦筋的小老鼠</h1>
+                <p id="subTitleText" class="text-sm md:text-base text-cyan-300 font-bold">第一關：修補公路書寫訓練</p>
+            </div>
+        </div>
+
+        <div class="flex space-x-3">
+            <!-- Reset Button -->
+            <button onclick="restartEntireGame()" class="bg-amber-500 hover:bg-amber-400 text-black border-4 border-white px-4 py-2 rounded-2xl text-lg md:text-xl font-black flex items-center space-x-2 active:scale-95 transition">
+                <i class="fa-solid fa-rotate-right text-xl"></i>
+                <span class="hidden md:inline">重頭開始</span>
+            </button>
+
+            <!-- Global Help sound switch for Non-verbal students -->
+            <button onclick="triggerHelpSound()" class="bg-red-600 hover:bg-red-500 text-white border-4 border-yellow-300 text-lg md:text-xl font-black p-2.5 md:p-3 rounded-2xl flex items-center space-x-2 active:scale-95 transition">
+                <i class="fa-solid fa-hand-paper text-xl"></i>
+                <span class="text-base hidden lg:inline">請幫忙</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Playfield -->
+    <main class="flex-1 relative overflow-hidden flex flex-col items-center justify-between p-3 max-w-5xl mx-auto w-full">
+
+        <!-- STAGE 1: Road Repair Game (Coloring 3 Holes) -->
+        <div id="stage1" class="w-full h-full flex flex-col justify-between items-center">
+            <!-- Top Guide Header -->
+            <div class="bg-gray-900 border-4 border-cyan-400 rounded-2xl p-3 w-full text-center shadow-2xl shrink-0 my-1">
+                <p class="text-xl md:2xl font-black text-cyan-300">
+                    🛣️ 動物們在一起修公路！
+                </p>
+                <p class="text-base md:text-lg text-yellow-300 font-bold">
+                    公路上有 3 個空洞，請用手指塗上顏色修補公路！
+                </p>
+            </div>
+
+            <!-- Road Repair Interactive Canvas Area -->
+            <div id="roadAreaBoundary" class="relative z-10 w-full flex-1 my-2 bg-neutral-900 rounded-3xl border-8 border-gray-700 overflow-hidden flex items-center justify-center">
+                <canvas id="roadCanvas" class="absolute inset-0 w-full h-full z-20"></canvas>
+                
+                <!-- Helper Prompt Banner -->
+                <div id="roadPromptText" class="pointer-events-none z-30 text-2xl md:text-3xl font-black text-yellow-300 bg-black/80 px-6 py-3 rounded-2xl border-4 border-yellow-400 text-center animate-bounce">
+                    👈 用手指/觸控筆在 3 個綠框空洞內塗色 👉
+                </div>
+            </div>
+
+            <!-- Road Progress Indicator -->
+            <div class="w-full max-w-2xl bg-gray-900 rounded-2xl p-3 border-4 border-yellow-400 shrink-0 my-1">
+                <div class="flex justify-between items-center mb-1 text-lg md:text-xl font-black">
+                    <span class="text-yellow-300"><i class="fa-solid fa-road text-cyan-400 mr-2"></i>公路修補進度：</span>
+                    <span id="holeProgressText" class="text-emerald-400 text-2xl font-black">0 / 3 個空洞已填滿</span>
+                </div>
+                <div class="w-full bg-gray-800 rounded-full h-7 border-2 border-gray-600 overflow-hidden p-0.5">
+                    <div id="roadProgressBar" class="bg-gradient-to-r from-cyan-500 via-yellow-400 to-emerald-400 h-full w-0 transition-all duration-150 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STAGE 2: Mouse Digging Activity (Writing Skill Target) -->
+        <div id="stage2" class="hidden w-full h-full flex flex-col justify-between items-center">
+
+            <!-- Top Guide Header -->
+            <div class="bg-gray-900 border-4 border-cyan-400 rounded-2xl p-3 w-full text-center shadow-2xl shrink-0 my-1">
+                <p class="text-xl md:text-2xl font-black text-cyan-300">
+                    🐭 小老鼠說：「大家拿鏟子來挖土吧！」
+                </p>
+                <p class="text-base md:text-lg text-yellow-300 font-bold">
+                    請用手指或觸控筆，在綠框內擦去泥土，完全清空泥土（至 0%）！
+                </p>
+            </div>
+
+            <!-- Interactive Scene Container -->
+            <div class="relative w-full flex-1 my-2 bg-neutral-950 rounded-3xl border-8 border-gray-800 overflow-hidden flex flex-col items-center justify-between p-3">
+                
+                <!-- Heavy Stone Target Illustration -->
+                <div id="stoneContainer" class="relative z-10 my-auto text-center transition-all">
+                    <div class="inline-block bg-neutral-900 border-8 border-amber-600 rounded-3xl p-5 shadow-2xl relative">
+                        <span class="text-8xl md:text-9xl block">🪨</span>
+                        <span class="text-2xl md:text-3xl font-black text-yellow-300 bg-black/90 px-5 py-1.5 rounded-full absolute -top-5 left-1/2 -translate-x-1/2 border-4 border-yellow-400 whitespace-nowrap">
+                            路中間的大石頭
+                        </span>
+                    </div>
+                </div>
+
+                <!-- High-Contrast Dig Area Canvas Layer -->
+                <div id="digAreaBoundary" class="relative z-20 w-full max-w-2xl h-52 md:h-60 rounded-3xl neon-border bg-amber-950/40 flex items-center justify-center overflow-hidden shrink-0">
+                    
+                    <!-- Canvas Element -->
+                    <canvas id="digCanvas" class="absolute inset-0 w-full h-full z-30"></canvas>
+
+                    <!-- Initial Start Text Prompt -->
+                    <div id="digPromptText" class="pointer-events-none z-10 text-2xl md:text-3xl font-black text-yellow-300 bg-black/80 px-6 py-3 rounded-2xl border-4 border-yellow-400 text-center animate-bounce">
+                        👈 在這裡滑動塗畫挖土 👉
+                    </div>
+                </div>
+
+                <!-- Underground Foundation Layer -->
+                <div class="w-full bg-amber-950 border-t-8 border-amber-800 py-2 text-center text-amber-200 font-black text-lg md:text-xl z-0 shrink-0 mt-1">
+                    🕳️ 地下深處 (泥土清空後大石頭將沉入這裡)
+                </div>
+            </div>
+
+            <!-- Soil Clearing Progress Bar -->
+            <div class="w-full max-w-2xl bg-gray-900 rounded-2xl p-3 border-4 border-yellow-400 shrink-0 my-1">
+                <div class="flex justify-between items-center mb-1 text-lg md:text-xl font-black">
+                    <span class="text-yellow-300"><i class="fa-solid fa-bucket text-amber-500 mr-2"></i>泥土清理進度：</span>
+                    <span id="soilClearedText" class="text-emerald-400 text-2xl font-black">0% (剩餘泥土: 100%)</span>
+                </div>
+                <div class="w-full bg-gray-800 rounded-full h-7 border-2 border-gray-600 overflow-hidden p-0.5">
+                    <div id="progressBar" class="bg-gradient-to-r from-amber-600 via-yellow-400 to-emerald-400 h-full w-0 transition-all duration-150 rounded-full"></div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Success Modal Popup -->
+    <div id="successModal" class="hidden fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-6 text-center">
+        <div class="bg-gray-900 border-8 border-yellow-400 rounded-3xl p-8 max-w-xl w-full flex flex-col items-center shadow-2xl animate-bounce">
+            <span class="text-9xl mb-3">🐭🎉</span>
+            <h2 class="text-4xl md:text-5xl font-black text-yellow-300 mb-3">太棒了！任務完成！</h2>
+            <p id="modalMsg" class="text-2xl text-white font-bold mb-6 leading-relaxed">
+                公路修好了，大石頭也成功埋進地下啦！<br>
+                <span class="text-cyan-300 font-extrabold">所有動物都說：「小老鼠，你真聰明！」</span>
+            </p>
+            <button onclick="closeSuccessModal()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black text-3xl font-black py-4 rounded-2xl border-4 border-white shadow-xl active:scale-95 transition">
+                再玩一次 ↺
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* ==================== Web Audio Synthesizer ==================== */
+        const AudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSynthesizedSound(type) {
+            if (AudioCtx.state === 'suspended') {
+                AudioCtx.resume();
+            }
+
+            const now = AudioCtx.currentTime;
+
+            if (type === 'paint') {
+                // Paint stroke audio effect
+                const osc = AudioCtx.createOscillator();
+                const gain = AudioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300 + Math.random() * 200, now);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+                osc.connect(gain);
+                gain.connect(AudioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            }
+            else if (type === 'hole_complete') {
+                // Hole filled fanfare
+                const osc = AudioCtx.createOscillator();
+                const gain = AudioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.3);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                osc.connect(gain);
+                gain.connect(AudioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+            else if (type === 'dig') {
+                // Digging noise effect
+                const bufferSize = AudioCtx.sampleRate * 0.15;
+                const buffer = AudioCtx.createBuffer(1, bufferSize, AudioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = AudioCtx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = AudioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 500;
+                filter.Q.value = 1.5;
+                noise.connect(filter);
+                filter.connect(AudioCtx.destination);
+                noise.start();
+            } 
+            else if (type === 'stone_drop') {
+                // Heavy stone sinking rumble sound
+                const osc = AudioCtx.createOscillator();
+                const gain = AudioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(140, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 2.5);
+                
+                gain.gain.setValueAtTime(0.7, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 2.5);
+                
+                osc.connect(gain);
+                gain.connect(AudioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 2.5);
+            } 
+            else if (type === 'success') {
+                // Praise Fanfare
+                [261.63, 329.63, 392.00, 523.25, 659.25].forEach((freq, idx) => {
+                    const osc = AudioCtx.createOscillator();
+                    const gain = AudioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.25, now + idx * 0.12);
+                    gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.12 + 0.4);
+                    osc.connect(gain);
+                    gain.connect(AudioCtx.destination);
+                    osc.start(now + idx * 0.12);
+                    osc.stop(now + idx * 0.12 + 0.4);
+                });
+            }
+        }
+
+        /* Cantonese TTS Speech Helper */
+        function speakText(text, callback) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-HK';
+            utterance.rate = 0.85; // Calibrated for Special Needs Learning
+            utterance.pitch = 1.1;
+            if (callback) {
+                utterance.onend = callback;
+            }
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function triggerHelpSound() {
+            speakText("老師請幫忙，我需要協助。");
+        }
+
+        function restartEntireGame() {
+            document.getElementById('stage1').classList.remove('hidden');
+            document.getElementById('stage2').classList.add('hidden');
+            document.getElementById('subTitleText').innerText = "第一關：修補公路書寫訓練";
+            initRoadStage();
+            speakText("動物在一起修公路！公路上有三個空洞，請用手指塗上顏色修補公路。");
+        }
+
+        /* ==================== STAGE 1: ROAD REPAIR LOGIC ==================== */
+        let roadCanvas, roadCtx;
+        let isRoadPainting = false;
+        let roadHoles = [];
+        let completedHolesCount = 0;
+
+        function initRoadStage() {
+            roadCanvas = document.getElementById('roadCanvas');
+            const container = document.getElementById('roadAreaBoundary');
+            
+            roadCanvas.width = container.clientWidth;
+            roadCanvas.height = container.clientHeight;
+            roadCtx = roadCanvas.getContext('2d');
+
+            completedHolesCount = 0;
+            document.getElementById('holeProgressText').innerText = `0 / 3 個空洞已填滿`;
+            document.getElementById('roadProgressBar').style.width = `0%`;
+            document.getElementById('roadPromptText').style.display = 'block';
+
+            // Define 3 High-contrast Road Hole Target Zones
+            const w = roadCanvas.width;
+            const h = roadCanvas.height;
+            const holeRadius = Math.min(w, h) * 0.14;
+
+            roadHoles = [
+                { id: 1, x: w * 0.22, y: h * 0.5, radius: holeRadius, fillPercent: 0, completed: false, color: '#38BDF8' }, // Bright Blue
+                { id: 2, x: w * 0.5,  y: h * 0.5, radius: holeRadius, fillPercent: 0, completed: false, color: '#FACC15' }, // Bright Yellow
+                { id: 3, x: w * 0.78, y: h * 0.5, radius: holeRadius, fillPercent: 0, completed: false, color: '#F43F5E' }  // Bright Pink/Red
+            ];
+
+            // Render Road Base Illustration
+            renderRoadBase();
+
+            // Pointer listeners
+            roadCanvas.addEventListener('pointerdown', startRoadPaint);
+            roadCanvas.addEventListener('pointermove', drawRoadPaint);
+            roadCanvas.addEventListener('pointerup', stopRoadPaint);
+            roadCanvas.addEventListener('pointercancel', stopRoadPaint);
+            roadCanvas.addEventListener('pointerleave', stopRoadPaint);
+        }
+
+        function renderRoadBase() {
+            if (!roadCtx) return;
+            const w = roadCanvas.width;
+            const h = roadCanvas.height;
+
+            // Draw Road Surface
+            roadCtx.fillStyle = '#262626';
+            roadCtx.fillRect(0, 0, w, h);
+
+            // Draw Highway Dashed Center Lines
+            roadCtx.strokeStyle = '#FFFFFF';
+            roadCtx.lineWidth = 10;
+            roadCtx.setLineDash([30, 25]);
+            roadCtx.beginPath();
+            roadCtx.moveTo(0, h * 0.15);
+            roadCtx.lineTo(w, h * 0.15);
+            roadCtx.moveTo(0, h * 0.85);
+            roadCtx.lineTo(w, h * 0.85);
+            roadCtx.stroke();
+            roadCtx.setLineDash([]);
+
+            // Draw 3 Hole Boundaries
+            roadHoles.forEach((hole, index) => {
+                // Hole background (Dark empty hole)
+                roadCtx.fillStyle = '#111827';
+                roadCtx.beginPath();
+                roadCtx.arc(hole.x, hole.y, hole.radius, 0, Math.PI * 2);
+                roadCtx.fill();
+
+                // High-Contrast Neon Boundary Outline
+                roadCtx.strokeStyle = '#00FF66';
+                roadCtx.lineWidth = 8;
+                roadCtx.setLineDash([8, 8]);
+                roadCtx.beginPath();
+                roadCtx.arc(hole.x, hole.y, hole.radius, 0, Math.PI * 2);
+                roadCtx.stroke();
+                roadCtx.setLineDash([]);
+
+                // Draw Hole Number Tag
+                roadCtx.fillStyle = '#00FF66';
+                roadCtx.font = 'bold 24px sans-serif';
+                roadCtx.textAlign = 'center';
+                roadCtx.fillText(`空洞 ${index + 1}`, hole.x, hole.y - hole.radius - 12);
+            });
+        }
+
+        function startRoadPaint(e) {
+            isRoadPainting = true;
+            document.getElementById('roadPromptText').style.display = 'none';
+            drawRoadPaint(e);
+        }
+
+        function drawRoadPaint(e) {
+            if (!isRoadPainting) return;
+
+            const rect = roadCanvas.getBoundingClientRect();
+            const px = e.clientX - rect.left;
+            const py = e.clientY - rect.top;
+
+            const paintBrushRadius = 26;
+
+            roadHoles.forEach(hole => {
+                const dist = Math.hypot(px - hole.x, py - hole.y);
+                if (dist <= hole.radius) {
+                    // Paint color into the hole
+                    roadCtx.fillStyle = hole.color;
+                    roadCtx.beginPath();
+                    roadCtx.arc(px, py, paintBrushRadius, 0, Math.PI * 2);
+                    roadCtx.fill();
+
+                    // Increment fill progress
+                    if (!hole.completed) {
+                        hole.fillPercent += 3.5; // Increases as user paints
+                        if (Math.random() > 0.6) playSynthesizedSound('paint');
+
+                        if (hole.fillPercent >= 100) {
+                            hole.completed = true;
+                            hole.fillPercent = 100;
+                            playSynthesizedSound('hole_complete');
+                            
+                            // Visual indication of complete hole
+                            roadCtx.strokeStyle = '#FFFFFF';
+                            roadCtx.lineWidth = 10;
+                            roadCtx.beginPath();
+                            roadCtx.arc(hole.x, hole.y, hole.radius, 0, Math.PI * 2);
+                            roadCtx.stroke();
+                        }
+                        updateRoadProgress();
+                    }
+                }
+            });
+        }
+
+        function stopRoadPaint() {
+            isRoadPainting = false;
+        }
+
+        function updateRoadProgress() {
+            completedHolesCount = roadHoles.filter(h => h.completed).length;
+            const progressPercent = Math.min(100, Math.floor((completedHolesCount / 3) * 100));
+
+            document.getElementById('holeProgressText').innerText = `${completedHolesCount} / 3 個空洞已填滿`;
+            document.getElementById('roadProgressBar').style.width = `${progressPercent}%`;
+
+            if (completedHolesCount >= 3) {
+                // All 3 holes repaired! Transition to Stage 2
+                setTimeout(() => {
+                    playSynthesizedSound('success');
+                    speakText("非常好！公路修好了！但是，有一塊巨大的石頭在路中間！一隻小老鼠說，大家拿鏟子來挖土吧！", () => {
+                        switchToStage2();
+                    });
+                }, 500);
+            }
+        }
+
+        function switchToStage2() {
+            document.getElementById('stage1').classList.add('hidden');
+            document.getElementById('stage2').classList.remove('hidden');
+            document.getElementById('subTitleText').innerText = "第二關：挖土塗鴉與指定範圍書寫訓練";
+            initDigCanvas();
+        }
+
+        /* ==================== STAGE 2: CANVAS DIGGING LOGIC ==================== */
+        let canvas, ctx;
+        let isDrawing = false;
+        let gameCompleted = false;
+        let totalSoilArea = 0;
+        let sampleGrid = [];
+        const GRID_STEPS = 12; // Grid resolution for accurate pixel percentage tracking
+
+        function initDigCanvas() {
+            canvas = document.getElementById('digCanvas');
+            const container = document.getElementById('digAreaBoundary');
+            
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            ctx = canvas.getContext('2d');
+
+            resetDigGame();
+
+            // Touch & Mouse Pointer Event Listeners
+            canvas.addEventListener('pointerdown', startDrawing);
+            canvas.addEventListener('pointermove', draw);
+            canvas.addEventListener('pointerup', stopDrawing);
+            canvas.addEventListener('pointercancel', stopDrawing);
+            canvas.addEventListener('pointerleave', stopDrawing);
+        }
+
+        function resetDigGame() {
+            gameCompleted = false;
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('soilClearedText').innerText = '0% (剩餘泥土: 100%)';
+            document.getElementById('digPromptText').style.display = 'block';
+
+            // Reset Stone Styling
+            const stone = document.getElementById('stoneContainer');
+            stone.classList.remove('stone-drop-animation', 'stone-shake');
+
+            if (!ctx) return;
+
+            // Fill canvas with dense brown soil layer
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = '#4A2F13'; // Rich Soil Brown
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Add soil texture detail lines
+            ctx.fillStyle = '#2D1B0A';
+            for (let i = 0; i < 60; i++) {
+                const rx = Math.random() * canvas.width;
+                const ry = Math.random() * canvas.height;
+                const rw = Math.random() * 20 + 5;
+                const rh = Math.random() * 10 + 5;
+                ctx.fillRect(rx, ry, rw, rh);
+            }
+
+            // High Contrast Target Line Borders
+            ctx.strokeStyle = '#00FF66';
+            ctx.lineWidth = 10;
+            ctx.setLineDash([12, 12]);
+            ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+            ctx.setLineDash([]); // Reset dash pattern
+
+            // Initialize Grid Pixel Tracking Matrix for 100% clearing calculation
+            setupPixelTrackingGrid();
+        }
+
+        function setupPixelTrackingGrid() {
+            sampleGrid = [];
+            const stepX = canvas.width / GRID_STEPS;
+            const stepY = canvas.height / GRID_STEPS;
+
+            for (let i = 0; i < GRID_STEPS; i++) {
+                for (let j = 0; j < GRID_STEPS; j++) {
+                    sampleGrid.push({
+                        x: Math.floor(i * stepX + stepX / 2),
+                        y: Math.floor(j * stepY + stepY / 2),
+                        cleared: false
+                    });
+                }
+            }
+            totalSoilArea = sampleGrid.length;
+        }
+
+        function startDrawing(e) {
+            if (gameCompleted) return;
+            isDrawing = true;
+            document.getElementById('digPromptText').style.display = 'none';
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing || gameCompleted) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Digging Eraser Brush Radius
+            const brushRadius = 32;
+
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(x, y, brushRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Play digging sound effect dynamically
+            if (Math.random() > 0.65) {
+                playSynthesizedSound('dig');
+            }
+
+            // Update Soil Clearing Calculation
+            updateSoilClearingProgress(x, y, brushRadius);
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function updateSoilClearingProgress(brushX, brushY, radius) {
+            let clearedCount = 0;
+
+            // Check grid sampling points cleared by eraser brush
+            sampleGrid.forEach(pt => {
+                if (!pt.cleared) {
+                    const dist = Math.hypot(pt.x - brushX, pt.y - brushY);
+                    if (dist <= radius) {
+                        pt.cleared = true;
+                    }
+                }
+                if (pt.cleared) {
+                    clearedCount++;
+                }
+            });
+
+            // Calculate precise percentage
+            const clearedPercent = Math.min(100, Math.floor((clearedCount / totalSoilArea) * 100));
+            const remainingPercent = 100 - clearedPercent;
+
+            // Update UI elements
+            document.getElementById('progressBar').style.width = clearedPercent + '%';
+            document.getElementById('soilClearedText').innerText = `${clearedPercent}% (剩餘泥土: ${remainingPercent}%)`;
+
+            // STRICT REQUIREMENT: Only trigger success when 100% of soil is completely cleared
+            if (clearedPercent >= 100 && !gameCompleted) {
+                triggerDiggingSuccess();
+            }
+        }
+
+        function triggerDiggingSuccess() {
+            gameCompleted = true;
+            isDrawing = false;
+            
+            // 1. Visual Shake Feedback
+            const stone = document.getElementById('stoneContainer');
+            stone.classList.add('stone-shake');
+
+            // 2. Play Heavy Stone Drop Sinking Sound
+            playSynthesizedSound('stone_drop');
+
+            // 3. Animate Stone Sinking into Ground
+            setTimeout(() => {
+                stone.classList.remove('stone-shake');
+                stone.classList.add('stone-drop-animation');
+            }, 500);
+
+            // 4. Audio & Voice Praise Feedback after stone drops completely
+            setTimeout(() => {
+                playSynthesizedSound('success');
+                speakText("太棒了！泥土挖好了！大石頭成功埋進地下啦！所有動物都說，小老鼠，你真聰明！", () => {
+                    showSuccessModal();
+                });
+            }, 2800);
+        }
+
+        /* Modal Visual Feedback Handlers */
+        function showSuccessModal() {
+            document.getElementById('successModal').classList.remove('hidden');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.add('hidden');
+            restartEntireGame();
+        }
+
+        // Window Resize Handler for Canvas Alignment
+        window.addEventListener('resize', () => {
+            if (!document.getElementById('stage1').classList.contains('hidden')) {
+                initRoadStage();
+            } else {
+                initDigCanvas();
+            }
+        });
+
+        window.onload = () => {
+            initRoadStage();
+            speakText("動物在一起修公路！公路上有三個空洞，請用手指塗上顏色修補公路。");
+        };
+    </script>
+</body>
+</html>
