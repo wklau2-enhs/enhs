@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>《會動腦筋的小老鼠》互動語文學習遊戲</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts 繁體中文圓體與楷體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* 自訂童趣樣式與動畫 */
+        body {
+            font-family: 'Zen Maru Gothic', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #FEF9C3 0%, #DCFCE7 50%, #E0F2FE 100%);
+            min-height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow-x: hidden;
+        }
+
+        /* 3D 遊戲按鈕效果 */
+        .btn-game {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.18);
+        }
+        .btn-game:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
+        }
+        .btn-game:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 聲波動畫 */
+        @keyframes pulseWave {
+            0%, 100% { transform: scaleY(0.4); }
+            50% { transform: scaleY(1.2); }
+        }
+        .wave-bar {
+            animation: pulseWave 0.8s ease-in-out infinite;
+        }
+        .wave-bar:nth-child(2) { animation-delay: 0.15s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.45s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.2s; }
+
+        /* 卡片翻轉與彈跳動畫 */
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            70% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        .animate-shake {
+            animation: shake 0.35s ease-in-out;
+        }
+
+        /* 田字格背景 */
+        .tian-zi-ge {
+            background-color: #FFFDF7;
+            background-image: 
+                linear-gradient(to right, transparent 49.5%, #FCA5A5 49.5%, #FCA5A5 50.5%, transparent 50.5%),
+                linear-gradient(to bottom, transparent 49.5%, #FCA5A5 49.5%, #FCA5A5 50.5%, transparent 50.5%),
+                linear-gradient(45deg, transparent 49.6%, #FECACA 49.6%, #FECACA 50.4%, transparent 50.4%),
+                linear-gradient(-45deg, transparent 49.6%, #FECACA 49.6%, #FECACA 50.4%, transparent 50.4%);
+            border: 4px solid #EF4444;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* 隱藏捲軸但保留功能 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col justify-between">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-white/90 backdrop-blur-md shadow-sm border-b-4 border-amber-300 sticky top-0 z-40">
+        <div class="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2">
+            <!-- 標題區 -->
+            <div class="flex items-center gap-2 sm:gap-3 cursor-pointer" onclick="switchTab('listen')">
+                <span class="text-3xl sm:text-4xl bg-amber-100 p-1.5 rounded-2xl border-2 border-amber-300">🐭</span>
+                <div>
+                    <h1 class="text-lg sm:text-2xl font-black text-amber-800 tracking-wide">會動腦筋的小老鼠</h1>
+                    <p class="text-xs text-amber-600 font-bold hidden sm:block">互動聽・讀・寫語文樂園</p>
+                </div>
+            </div>
+
+            <!-- 任務切換分頁 -->
+            <nav class="flex items-center gap-1.5 sm:gap-3">
+                <button id="tab-listen" onclick="switchTab('listen')" class="btn-game px-3 sm:px-4 py-2 rounded-2xl font-bold text-sm sm:text-base flex items-center gap-1.5 bg-amber-400 text-amber-950 border-2 border-amber-500">
+                    <span>🎧</span><span>1. 聆聽任務</span>
+                </button>
+                <button id="tab-read" onclick="switchTab('read')" class="btn-game px-3 sm:px-4 py-2 rounded-2xl font-bold text-sm sm:text-base flex items-center gap-1.5 bg-white text-slate-600 border-2 border-slate-200 hover:bg-emerald-50">
+                    <span>📖</span><span>2. 閱讀任務</span>
+                </button>
+                <button id="tab-write" onclick="switchTab('write')" class="btn-game px-3 sm:px-4 py-2 rounded-2xl font-bold text-sm sm:text-base flex items-center gap-1.5 bg-white text-slate-600 border-2 border-slate-200 hover:bg-sky-50">
+                    <span>✍️</span><span>3. 書寫任務</span>
+                </button>
+            </nav>
+
+            <!-- 星星積分顯示 -->
+            <div class="flex items-center gap-1.5 bg-yellow-100 px-3 py-1.5 rounded-full border-2 border-yellow-400 shadow-inner">
+                <span class="text-xl">⭐</span>
+                <span id="star-count" class="font-black text-amber-700 text-lg">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要遊戲舞台區 -->
+    <main class="flex-grow max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col justify-center">
+
+        <!-- ========================================== -->
+        <!-- 任務一：聆聽任務 (Listening Task)            -->
+        <!-- ========================================== -->
+        <section id="section-listen" class="animate-pop space-y-5">
+            <!-- 課前提示橫幅 -->
+            <div class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 sm:p-5 rounded-3xl shadow-lg border-4 border-white flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3 sm:gap-4 text-center sm:text-left">
+                    <div class="bg-white/20 p-3 rounded-2xl text-3xl sm:text-4xl shrink-0">👂🔊</div>
+                    <div>
+                        <span class="inline-block bg-white text-orange-600 text-xs font-black px-2.5 py-0.5 rounded-full mb-1">任務一：專心聆聽</span>
+                        <h2 class="text-lg sm:text-xl font-black">請先面向聲源，按下播放鍵後聆聽完整課文。</h2>
+                    </div>
+                </div>
+                <button onclick="playAttentionChime()" class="btn-game bg-yellow-300 hover:bg-yellow-200 text-amber-950 font-black px-4 py-2.5 rounded-2xl text-sm shrink-0 border-2 border-yellow-500 flex items-center gap-1.5">
+                    <span>🔔</span> 聽聲辨位提示音
+                </button>
+            </div>
+
+            <!-- 故事舞台與課文卡片 -->
+            <div class="bg-white rounded-3xl shadow-xl border-4 border-amber-200 overflow-hidden">
+                <!-- 故事插畫區 -->
+                <div class="bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-100 p-4 sm:p-6 relative border-b-4 border-amber-100">
+                    <div class="max-w-2xl mx-auto">
+                        <!-- 動態故事插畫 SVG -->
+                        <svg viewBox="0 0 600 180" class="w-full h-auto drop-shadow-md rounded-2xl bg-white/40 backdrop-blur-xs p-2">
+                            <!-- 太陽與雲朵 -->
+                            <circle cx="530" cy="40" r="24" fill="#FBBF24" />
+                            <path d="M80 45 Q95 25 115 40 Q135 25 150 45 Z" fill="#FFFFFF" opacity="0.9"/>
+                            <!-- 公路地面 -->
+                            <rect x="0" y="135" width="600" height="45" rx="8" fill="#94A3B8" />
+                            <line x1="20" y1="157" x2="580" y2="157" stroke="#F8FAFC" stroke-width="4" stroke-dasharray="20,15" />
+                            <!-- 巨大石頭 -->
+                            <g id="story-rock" class="transition-transform duration-700">
+                                <path d="M240 140 Q235 80 295 75 Q355 70 365 140 Z" fill="#64748B" stroke="#334155" stroke-width="4"/>
+                                <path d="M265 95 Q285 88 300 98" stroke="#94A3B8" stroke-width="3" fill="none" stroke-linecap="round"/>
+                                <text x="302" y="122" font-size="16" font-weight="bold" fill="#F1F5F9" text-anchor="middle">大石頭</text>
+                            </g>
+                            <!-- 兔子 -->
+                            <g transform="translate(150, 75)">
+                                <ellipse cx="22" cy="18" rx="5" ry="16" fill="#F8FAFC" stroke="#475569" stroke-width="2.5"/>
+                                <ellipse cx="34" cy="18" rx="5" ry="16" fill="#F8FAFC" stroke="#475569" stroke-width="2.5"/>
+                                <circle cx="28" cy="40" r="16" fill="#F8FAFC" stroke="#475569" stroke-width="2.5"/>
+                                <circle cx="33" cy="37" r="2.5" fill="#1E293B"/>
+                                <path d="M18 55 L38 55 L42 68 L14 68 Z" fill="#F472B6"/>
+                            </g>
+                            <!-- 大象 -->
+                            <g transform="translate(405, 55)">
+                                <rect x="15" y="25" width="55" height="48" rx="20" fill="#93C5FD" stroke="#2563EB" stroke-width="3"/>
+                                <circle cx="20" cy="42" r="18" fill="#93C5FD" stroke="#2563EB" stroke-width="3"/>
+                                <path d="M5 45 Q-12 50 -5 70" stroke="#2563EB" stroke-width="7" fill="none" stroke-linecap="round"/>
+                                <circle cx="15" cy="38" r="2.5" fill="#1E293B"/>
+                                <rect x="25" y="70" width="10" height="15" fill="#60A5FA"/>
+                                <rect x="50" y="70" width="10" height="15" fill="#60A5FA"/>
+                            </g>
+                            <!-- 聰明小老鼠 -->
+                            <g transform="translate(80, 95)">
+                                <circle cx="16" cy="22" r="9" fill="#CBD5E1" stroke="#475569" stroke-width="2.5"/>
+                                <circle cx="32" cy="22" r="9" fill="#CBD5E1" stroke="#475569" stroke-width="2.5"/>
+                                <ellipse cx="24" cy="32" rx="14" ry="11" fill="#E2E8F0" stroke="#475569" stroke-width="2.5"/>
+                                <circle cx="29" cy="30" r="2" fill="#1E293B"/>
+                                <circle cx="37" cy="33" r="2.5" fill="#F43F5E"/>
+                                <!-- 燈泡靈感 -->
+                                <circle cx="24" cy="4" r="7" fill="#FDE047" stroke="#EAB308" stroke-width="2"/>
+                                <line x1="24" y1="-7" x2="24" y2="-11" stroke="#EAB308" stroke-width="2"/>
+                                <line x1="13" y1="0" x2="9" y2="-3" stroke="#EAB308" stroke-width="2"/>
+                                <line x1="35" y1="0" x2="39" y2="-3" stroke="#EAB308" stroke-width="2"/>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- 課文播放控制列 -->
+                <div class="bg-amber-50 px-4 sm:px-8 py-4 border-b-2 border-amber-100 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <button id="btn-play-story" onclick="toggleStorySpeech()" class="btn-game bg-emerald-500 hover:bg-emerald-400 text-white font-black px-5 sm:px-6 py-3 rounded-2xl text-base sm:text-lg border-2 border-emerald-600 flex items-center gap-2">
+                            <span id="play-icon">▶️</span>
+                            <span id="play-text">播放完整課文</span>
+                        </button>
+                        <button onclick="stopStorySpeech()" class="btn-game bg-rose-500 hover:bg-rose-400 text-white font-bold px-4 py-3 rounded-2xl text-base border-2 border-rose-600 flex items-center gap-1.5">
+                            <span>⏹️</span><span class="hidden sm:inline">停止</span>
+                        </button>
+                    </div>
+
+                    <!-- 語速與聲波指示器 -->
+                    <div class="flex items-center gap-3">
+                        <div id="audio-wave" class="hidden items-center gap-1 h-6 px-3 bg-emerald-100 rounded-full border border-emerald-300">
+                            <div class="w-1.5 h-4 bg-emerald-500 rounded-full wave-bar"></div>
+                            <div class="w-1.5 h-4 bg-emerald-500 rounded-full wave-bar"></div>
+                            <div class="w-1.5 h-4 bg-emerald-500 rounded-full wave-bar"></div>
+                            <div class="w-1.5 h-4 bg-emerald-500 rounded-full wave-bar"></div>
+                            <div class="w-1.5 h-4 bg-emerald-500 rounded-full wave-bar"></div>
+                        </div>
+                        <select id="speech-rate" class="bg-white border-2 border-amber-300 rounded-xl px-3 py-2 font-bold text-sm text-amber-900 focus:outline-none">
+                            <option value="0.75">🐢 慢速朗讀</option>
+                            <option value="0.9" selected>🐇 適中語速</option>
+                            <option value="1.1">🐆 正常語速</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 課文內文區（支援逐句高亮與點擊單句朗讀） -->
+                <div class="p-5 sm:p-8 space-y-4">
+                    <div class="text-center mb-2">
+                        <h3 class="text-2xl sm:text-3xl font-black text-amber-900 inline-block border-b-4 border-amber-300 pb-1">《會動腦筋的小老鼠》</h3>
+                        <p class="text-xs text-slate-400 mt-1">💡 提示：點擊任意句子也可以單獨聆聽喔！</p>
+                    </div>
+                    <div id="story-container" class="text-xl sm:text-2xl leading-relaxed sm:leading-loose font-bold text-slate-700 space-y-3 bg-amber-50/50 p-4 sm:p-6 rounded-2xl border-2 border-amber-100">
+                        <!-- 句子由 JS 動態渲染 -->
+                    </div>
+                </div>
+
+                <!-- 完成聆聽進入下一關按鈕 -->
+                <div class="bg-slate-50 px-6 py-4 border-t-2 border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <p id="listen-status" class="text-sm font-bold text-slate-500">🎧 聽完完整課文後，即可領取星星並前往閱讀任務！</p>
+                    <button onclick="completeListening()" class="btn-game bg-amber-400 hover:bg-amber-300 text-amber-950 font-black px-6 py-3 rounded-2xl text-base border-2 border-amber-500 flex items-center gap-2 w-full sm:w-auto justify-center">
+                        <span>我聽完了！前往閱讀任務</span><span>➡️</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 任務二：閱讀任務 (Reading Task)              -->
+        <!-- ========================================== -->
+        <section id="section-read" class="hidden animate-pop space-y-5">
+            <!-- 組別選擇與進度列 -->
+            <div class="bg-white p-4 sm:p-5 rounded-3xl shadow-md border-4 border-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl w-full sm:w-auto">
+                    <button id="btn-group-basic" onclick="setReadGroup('basic')" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all bg-emerald-500 text-white shadow">
+                        🌱 初組：圖配圖 (6題)
+                    </button>
+                    <button id="btn-group-adv" onclick="setReadGroup('adv')" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all text-slate-600 hover:bg-white/60">
+                        🌳 高組：聽詞配圖 (10題)
+                    </button>
+                    <button id="btn-group-challenge" onclick="setReadGroup('challenge')" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all text-slate-600 hover:bg-white/60">
+                        🏆 挑戰題：課文問答 (6題)
+                    </button>
+                </div>
+
+                <!-- 題目進度指示 -->
+                <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                    <span id="read-progress-text" class="font-black text-emerald-700 bg-emerald-100 px-3.5 py-1.5 rounded-xl text-sm sm:text-base">
+                        第 1 / 6 題
+                    </span>
+                    <button onclick="resetCurrentReadGroup()" class="btn-game bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-3 py-1.5 rounded-xl text-sm">
+                        🔄 重新練習
+                    </button>
+                </div>
+            </div>
+
+            <!-- 閱讀遊戲主舞台 -->
+            <div id="read-game-board" class="bg-white rounded-3xl shadow-xl border-4 border-emerald-300 p-5 sm:p-8 text-center space-y-6">
+                <!-- 題目提示區 -->
+                <div class="space-y-3">
+                    <span id="read-mode-badge" class="inline-block bg-emerald-100 text-emerald-800 font-black px-4 py-1 rounded-full text-sm">
+                        請選出與上方相同的圖片
+                    </span>
+
+                    <!-- 初組顯示：大圖片題目 -->
+                    <div id="basic-prompt-box" class="flex flex-col items-center justify-center">
+                        <div class="w-40 h-40 sm:w-48 sm:h-48 bg-amber-50 rounded-3xl border-4 border-amber-300 shadow-inner flex flex-col items-center justify-center p-4 mx-auto relative">
+                            <div id="basic-target-svg" class="w-28 h-28 sm:w-32 sm:h-32"></div>
+                            <span id="basic-target-label" class="mt-1 font-black text-lg text-amber-900">石頭</span>
+                        </div>
+                    </div>
+
+                    <!-- 高組顯示：語音喇叭按鈕 -->
+                    <div id="adv-prompt-box" class="hidden flex-col items-center justify-center py-2">
+                        <button onclick="speakCurrentTargetWord()" class="btn-game w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-gradient-to-b from-sky-400 to-blue-500 text-white border-4 border-white shadow-xl flex flex-col items-center justify-center mx-auto group">
+                            <span class="text-5xl sm:text-6xl group-hover:scale-110 transition-transform">🔊</span>
+                            <span class="text-xs sm:text-sm font-black mt-1 tracking-wider">點擊聽詞語</span>
+                        </button>
+                        <p class="text-sm font-bold text-slate-500 mt-3">請仔細聆聽語音，選出正確的圖片！</p>
+                    </div>
+
+                    <!-- 挑戰題顯示：課文問題與朗讀按鈕 -->
+                    <div id="challenge-prompt-box" class="hidden flex-col items-center justify-center py-2 max-w-2xl mx-auto">
+                        <div class="bg-amber-50 border-4 border-amber-300 rounded-3xl p-4 sm:p-6 w-full flex flex-col sm:flex-row items-center justify-between gap-4 shadow-inner">
+                            <h3 id="challenge-question-text" class="text-xl sm:text-2xl font-black text-amber-950 text-center sm:text-left leading-snug">
+                                1. 路中間有什麼東西擋住了？
+                            </h3>
+                            <button onclick="speakCurrentChallengeQuestion()" class="btn-game shrink-0 bg-amber-400 hover:bg-amber-300 text-amber-950 font-black px-4 py-2.5 rounded-2xl text-sm border-2 border-amber-500 flex items-center gap-1.5">
+                                <span>🔊</span> 朗讀題目
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 四個選項卡片網格 -->
+                <div id="read-options-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 max-w-4xl mx-auto pt-2">
+                    <!-- 選項卡片由 JS 動態生成 -->
+                </div>
+            </div>
+
+            <!-- 閱讀組別通關慶祝畫面 -->
+            <div id="read-complete-board" class="hidden bg-white rounded-3xl shadow-xl border-4 border-yellow-400 p-8 text-center space-y-5 animate-pop">
+                <div class="text-6xl sm:text-7xl">🏆🎉</div>
+                <h3 id="read-complete-title" class="text-2xl sm:text-3xl font-black text-amber-800">太棒了！你完成了初組圖配圖！</h3>
+                <p class="text-slate-600 font-bold text-base sm:text-lg">所有的題目都難不倒你，獲得獎勵星星！</p>
+                <div class="flex flex-wrap justify-center gap-4 pt-2">
+                    <button id="btn-next-adv" onclick="setReadGroup('adv')" class="btn-game bg-emerald-500 hover:bg-emerald-400 text-white font-black px-6 py-3.5 rounded-2xl text-lg border-2 border-emerald-600">
+                        🌳 挑戰高組（聽詞配圖）
+                    </button>
+                    <button id="btn-next-challenge" onclick="setReadGroup('challenge')" class="btn-game bg-amber-500 hover:bg-amber-400 text-white font-black px-6 py-3.5 rounded-2xl text-lg border-2 border-amber-600">
+                        🏆 進入挑戰題（課文問答）
+                    </button>
+                    <button onclick="switchTab('write')" class="btn-game bg-sky-500 hover:bg-sky-400 text-white font-black px-6 py-3.5 rounded-2xl text-lg border-2 border-sky-600">
+                        ✍️ 前往任務三：書寫任務
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 任務三：書寫任務 (Writing Task)              -->
+        <!-- ========================================== -->
+        <section id="section-write" class="hidden animate-pop space-y-5">
+            <!-- 組別切換列 (初組塗一塗 vs 高組補寫) -->
+            <div class="bg-white p-4 sm:p-5 rounded-3xl shadow-md border-4 border-sky-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl w-full sm:w-auto">
+                    <button id="btn-write-basic" onclick="setWriteGroup('basic')" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all bg-sky-500 text-white shadow">
+                        🎨 初組書寫：塗一塗
+                    </button>
+                    <button id="btn-write-adv" onclick="setWriteGroup('adv')" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all text-slate-600 hover:bg-white/60">
+                        ✍️ 高組書寫：按難度補寫
+                    </button>
+                </div>
+
+                <div id="write-instruction-badge" class="text-sm font-black text-sky-800 bg-sky-100 px-4 py-2 rounded-2xl text-center">
+                    在「石頭」和「繩子」的框線內，用手指填上顏色！
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 初組書寫：塗一塗 (石頭 & 繩子 框線填色+橡皮擦) -->
+            <!-- ========================================== -->
+            <div id="write-basic-board" class="bg-white rounded-3xl shadow-xl border-4 border-sky-300 p-4 sm:p-8 space-y-6">
+                <!-- 圖案選擇與語音按鈕 -->
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b-2 border-sky-100 pb-4">
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <button id="btn-color-item-stone" onclick="selectColoringItem('石頭')" class="btn-game px-5 py-2.5 rounded-2xl font-black text-base sm:text-lg border-2 bg-amber-400 text-amber-950 border-amber-500 flex items-center gap-2">
+                            <span>🪨</span> 1. 石頭
+                        </button>
+                        <button id="btn-color-item-rope" onclick="selectColoringItem('繩子')" class="btn-game px-5 py-2.5 rounded-2xl font-black text-base sm:text-lg border-2 bg-white text-slate-700 border-slate-200 hover:bg-amber-50 flex items-center gap-2">
+                            <span>🪢</span> 2. 繩子
+                        </button>
+                    </div>
+                    <button onclick="speakText(currentColorItem, 0.85)" class="btn-game bg-sky-100 hover:bg-sky-200 text-sky-800 font-black px-4 py-2 rounded-2xl text-sm border-2 border-sky-300 flex items-center gap-1.5">
+                        <span>🔊</span> 聽一聽詞語
+                    </button>
+                </div>
+
+                <!-- 塗色畫布與調色盤工具區 -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    <!-- 畫布區 (7欄) -->
+                    <div class="md:col-span-7 flex flex-col items-center">
+                        <div class="relative w-72 h-72 sm:w-96 sm:h-96 bg-amber-50/40 rounded-3xl border-4 border-amber-300 shadow-inner overflow-hidden touch-none">
+                            <!-- 底層：繪畫塗色 Canvas (受框線遮罩限制，確保塗在框線內) -->
+                            <canvas id="color-canvas" class="absolute inset-0 w-full h-full cursor-crosshair z-10"></canvas>
+                            <!-- 頂層：高對比粗框線 SVG (不阻擋觸控事件) -->
+                            <div id="color-outline-overlay" class="absolute inset-0 w-full h-full pointer-events-none z-20 flex items-center justify-center">
+                                <!-- 由 JS 動態注入粗框線 SVG -->
+                            </div>
+                        </div>
+                        <p class="text-xs sm:text-sm font-bold text-slate-500 mt-2">💡 畫筆會自動幫你保護在框線內塗色喔！</p>
+                    </div>
+
+                    <!-- 調色盤與橡皮擦工具列 (5欄) -->
+                    <div class="md:col-span-5 bg-slate-50 rounded-3xl p-5 border-2 border-slate-200 space-y-5">
+                        <div>
+                            <h4 class="font-black text-slate-700 mb-3 text-base">🖍️ 選擇喜歡的顏色：</h4>
+                            <div class="grid grid-cols-4 gap-3">
+                                <button onclick="setColorTool('#64748B', false)" class="color-swatch w-12 h-12 rounded-2xl bg-slate-500 border-4 border-white shadow-md ring-4 ring-sky-400 scale-105 transition-transform" data-color="#64748B" title="石頭灰"></button>
+                                <button onclick="setColorTool('#D97706', false)" class="color-swatch w-12 h-12 rounded-2xl bg-amber-600 border-4 border-white shadow-md transition-transform" data-color="#D97706" title="繩子棕"></button>
+                                <button onclick="setColorTool('#F59E0B', false)" class="color-swatch w-12 h-12 rounded-2xl bg-amber-400 border-4 border-white shadow-md transition-transform" data-color="#F59E0B" title="亮黃色"></button>
+                                <button onclick="setColorTool('#EF4444', false)" class="color-swatch w-12 h-12 rounded-2xl bg-red-500 border-4 border-white shadow-md transition-transform" data-color="#EF4444" title="紅色"></button>
+                                <button onclick="setColorTool('#3B82F6', false)" class="color-swatch w-12 h-12 rounded-2xl bg-blue-500 border-4 border-white shadow-md transition-transform" data-color="#3B82F6" title="藍色"></button>
+                                <button onclick="setColorTool('#10B981', false)" class="color-swatch w-12 h-12 rounded-2xl bg-emerald-500 border-4 border-white shadow-md transition-transform" data-color="#10B981" title="綠色"></button>
+                                <button onclick="setColorTool('#EC4899', false)" class="color-swatch w-12 h-12 rounded-2xl bg-pink-500 border-4 border-white shadow-md transition-transform" data-color="#EC4899" title="粉紅色"></button>
+                                <button onclick="setColorTool('#8B5CF6', false)" class="color-swatch w-12 h-12 rounded-2xl bg-violet-500 border-4 border-white shadow-md transition-transform" data-color="#8B5CF6" title="紫色"></button>
+                            </div>
+                        </div>
+
+                        <!-- 橡皮擦與畫筆粗細 -->
+                        <div class="pt-2 border-t-2 border-slate-200 space-y-3">
+                            <button id="btn-eraser" onclick="setColorTool('#FFFFFF', true)" class="btn-game w-full py-3 px-4 rounded-2xl font-black text-base border-2 bg-white text-slate-700 border-slate-300 hover:bg-rose-50 flex items-center justify-center gap-2">
+                                <span>🧽</span> 橡皮擦工具
+                            </button>
+                            <div class="flex gap-2">
+                                <button onclick="clearColorCanvas()" class="btn-game flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-black py-3 px-3 rounded-2xl text-sm border-2 border-slate-300">
+                                    🔄 全部重塗
+                                </button>
+                                <button onclick="submitColoring()" class="btn-game flex-1 bg-emerald-500 hover:bg-emerald-400 text-white font-black py-3 px-3 rounded-2xl text-sm border-2 border-emerald-600">
+                                    ✅ 完成塗色！
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 高組書寫：聽字音，按難度逐一補寫「石、沙、土」 -->
+            <!-- ========================================== -->
+            <div id="write-adv-board" class="hidden bg-white rounded-3xl shadow-xl border-4 border-sky-300 p-4 sm:p-8 space-y-6">
+                <!-- 難度關卡進度選擇列 (土 -> 石 -> 沙) -->
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b-2 border-sky-100 pb-4">
+                    <div class="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1">
+                        <button id="btn-adv-char-0" onclick="selectAdvWriteLevel(0)" class="btn-game px-4 py-2.5 rounded-2xl font-black text-sm sm:text-base border-2 bg-sky-500 text-white border-sky-600 flex items-center gap-1.5 shrink-0">
+                            <span>⭐ 難度一：土 (3畫)</span>
+                        </button>
+                        <button id="btn-adv-char-1" onclick="selectAdvWriteLevel(1)" class="btn-game px-4 py-2.5 rounded-2xl font-black text-sm sm:text-base border-2 bg-slate-50 text-slate-700 border-slate-200 hover:bg-sky-50 flex items-center gap-1.5 shrink-0">
+                            <span>⭐⭐ 難度二：石 (5畫)</span>
+                        </button>
+                        <button id="btn-adv-char-2" onclick="selectAdvWriteLevel(2)" class="btn-game px-4 py-2.5 rounded-2xl font-black text-sm sm:text-base border-2 bg-slate-50 text-slate-700 border-slate-200 hover:bg-sky-50 flex items-center gap-1.5 shrink-0">
+                            <span>⭐⭐⭐ 難度三：沙 (7畫)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    <!-- 左側：先聽字音提示區與圖卡 (5欄) -->
+                    <div class="md:col-span-5 bg-sky-50/70 rounded-3xl p-5 border-2 border-sky-100 flex flex-col items-center text-center space-y-4">
+                        <span class="bg-amber-200 text-amber-950 font-black text-xs px-3 py-1 rounded-full">步驟 1：先聽字音</span>
+                        
+                        <button onclick="speakAdvWritePrompt()" class="btn-game w-28 h-28 rounded-full bg-gradient-to-b from-sky-400 to-blue-500 text-white border-4 border-white shadow-lg flex flex-col items-center justify-center group">
+                            <span class="text-4xl group-hover:scale-110 transition-transform">🔊</span>
+                            <span class="text-xs font-black mt-1">點擊聽字音</span>
+                        </button>
+
+                        <div>
+                            <div class="text-3xl sm:text-4xl font-black text-sky-900" id="adv-write-word-title">「土」— 挖土、運土</div>
+                            <p class="text-sm font-bold text-sky-700 mt-1" id="adv-write-hint-text">請在右邊田字格中，補寫缺少的筆畫！</p>
+                        </div>
+                    </div>
+
+                    <!-- 右側：互動田字格補寫畫布 (7欄) -->
+                    <div class="md:col-span-7 flex flex-col items-center space-y-4">
+                        <span class="bg-emerald-100 text-emerald-800 font-black text-xs px-3 py-1 rounded-full">步驟 2：在虛線處補寫筆畫</span>
+
+                        <!-- 畫筆顏色列 -->
+                        <div class="flex items-center justify-center gap-3 bg-slate-100 p-2 rounded-2xl">
+                            <button onclick="setBrushColor('#DC2626')" class="w-8 h-8 rounded-full bg-red-600 border-2 border-white shadow ring-2 ring-sky-400 color-btn" data-color="#DC2626" title="紅色"></button>
+                            <button onclick="setBrushColor('#1E293B')" class="w-8 h-8 rounded-full bg-slate-800 border-2 border-white shadow color-btn" data-color="#1E293B" title="黑色"></button>
+                            <button onclick="setBrushColor('#2563EB')" class="w-8 h-8 rounded-full bg-blue-600 border-2 border-white shadow color-btn" data-color="#2563EB" title="藍色"></button>
+                        </div>
+
+                        <!-- 田字格補寫容器 -->
+                        <div class="relative w-64 h-64 sm:w-80 sm:h-80 tian-zi-ge rounded-2xl overflow-hidden touch-none">
+                            <!-- SVG 已有筆畫(黑色實線) + 待補寫筆畫(紅色虛線提示) -->
+                            <div id="adv-stroke-svg-layer" class="absolute inset-0 w-full h-full pointer-events-none select-none">
+                                <!-- 由 JS 動態注入 -->
+                            </div>
+                            <!-- 手寫補筆 Canvas -->
+                            <canvas id="write-canvas" class="relative z-10 w-full h-full cursor-crosshair"></canvas>
+                        </div>
+
+                        <!-- 畫布操作按鈕 -->
+                        <div class="flex items-center justify-center gap-3 w-full max-w-md">
+                            <button onclick="clearCanvas()" class="btn-game flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-black py-3 px-4 rounded-2xl text-base border-2 border-slate-300 flex items-center justify-center gap-1.5">
+                                <span>🧹</span> 清除補筆
+                            </button>
+                            <button onclick="submitAdvWriting()" class="btn-game flex-1 bg-emerald-500 hover:bg-emerald-400 text-white font-black py-3 px-4 rounded-2xl text-base border-2 border-emerald-600 flex items-center justify-center gap-1.5">
+                                <span>✅</span> 完成補寫！
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 底部版權與鼓勵列 -->
+    <footer class="text-center py-3 text-xs sm:text-sm text-slate-500 font-bold">
+        🌟 《會動腦筋的小老鼠》互動教學遊戲 • 動動腦筋，辦法總比困難多！
+    </footer>
+
+    <!-- 通用回饋提示彈窗 (取代 alert) -->
+    <div id="feedback-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl border-4 border-amber-300 max-w-sm w-full p-6 text-center shadow-2xl animate-pop space-y-4">
+            <div id="modal-emoji" class="text-6xl">🌟</div>
+            <h3 id="modal-title" class="text-2xl font-black text-slate-800">太棒了！</h3>
+            <p id="modal-message" class="text-slate-600 font-bold text-base">你完成了一個任務！</p>
+            <button onclick="closeModal()" class="btn-game w-full bg-amber-400 hover:bg-amber-300 text-amber-950 font-black py-3 rounded-2xl text-lg border-2 border-amber-500">
+                繼續加油！
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. 課文與生字圖庫資料定義
+        // ==========================================
+        const STORY_SENTENCES = [
+            "動物在一起修公路。",
+            "一塊巨大的石頭在路中間。",
+            "兔子想搬走大石頭，用手向前推，又用繩子向後拉，可是石頭一動也不動。",
+            "牠們請了大象來幫忙，還是提不動。",
+            "這時，一隻小老鼠說：「我有辦法！大家拿鏟子來吧！」",
+            "動物一齊動手，有的挖土，有的運土。",
+            "最後，牠們成功地令大石頭埋進地下啦！",
+            "所有動物都說：「小老鼠，你真聰明！」"
+        ];
+
+        // 詞彙與高辨識度兒童插畫 SVG 資料庫
+        const VOCAB_DATA = {
+            "石頭": {
+                char: "石",
+                word: "石頭",
+                example: "一塊巨大的石頭在路中間。",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <ellipse cx="60" cy="98" rx="45" ry="10" fill="#CBD5E1"/>
+                        <path d="M22 92 Q18 45 58 38 Q98 35 102 92 Z" fill="#64748B" stroke="#334155" stroke-width="4" stroke-linejoin="round"/>
+                        <path d="M38 58 Q55 50 70 60" stroke="#94A3B8" stroke-width="4" fill="none" stroke-linecap="round"/>
+                        <path d="M72 72 Q82 70 88 78" stroke="#475569" stroke-width="3" fill="none" stroke-linecap="round"/>
+                      </svg>`
+            },
+            "繩子": {
+                char: "繩",
+                word: "繩子",
+                example: "兔子用繩子向後拉大石頭。",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <path d="M25 85 C15 55, 55 25, 85 45 C105 60, 75 95, 45 75 C30 65, 55 40, 95 25" fill="none" stroke="#D97706" stroke-width="10" stroke-linecap="round"/>
+                        <path d="M25 85 C15 55, 55 25, 85 45 C105 60, 75 95, 45 75 C30 65, 55 40, 95 25" fill="none" stroke="#FBBF24" stroke-width="4" stroke-dasharray="6,6" stroke-linecap="round"/>
+                      </svg>`
+            },
+            "鏟子": {
+                char: "鏟",
+                word: "鏟子",
+                example: "小老鼠請大家拿鏟子來挖土。",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <g transform="rotate(35 60 60)">
+                            <rect x="48" y="12" width="24" height="10" rx="4" fill="#EF4444" stroke="#991B1B" stroke-width="3"/>
+                            <rect x="56" y="22" width="8" height="45" fill="#B45309"/>
+                            <path d="M42 67 L78 67 L74 98 Q60 110 46 98 Z" fill="#94A3B8" stroke="#334155" stroke-width="3.5" stroke-linejoin="round"/>
+                        </g>
+                      </svg>`
+            },
+            "推": {
+                char: "推",
+                word: "向前推",
+                example: "兔子用手向前推大石頭。",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <!-- 石塊 -->
+                        <rect x="72" y="35" width="36" height="65" rx="8" fill="#64748B" stroke="#334155" stroke-width="3"/>
+                        <!-- 小人雙手向前推 -->
+                        <circle cx="34" cy="42" r="12" fill="#FDE68A" stroke="#B45309" stroke-width="3"/>
+                        <path d="M34 54 L42 82 L26 98 M42 82 L54 98" stroke="#2563EB" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <path d="M38 62 L70 58" stroke="#F59E0B" stroke-width="7" stroke-linecap="round"/>
+                        <!-- 向前箭頭 -->
+                        <path d="M52 24 L78 24 M70 17 L78 24 L70 31" stroke="#EF4444" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>`
+            },
+            "搬": {
+                char: "搬",
+                word: "搬走",
+                example: "兔子想搬走大石頭。",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <!-- 雙手捧起箱子/石頭 -->
+                        <rect x="35" y="22" width="50" height="36" rx="8" fill="#F59E0B" stroke="#92400E" stroke-width="3"/>
+                        <circle cx="60" cy="68" r="11" fill="#FDE68A" stroke="#B45309" stroke-width="2.5"/>
+                        <path d="M36 48 Q30 72 48 76 M84 48 Q90 72 72 76" stroke="#2563EB" stroke-width="6" fill="none" stroke-linecap="round"/>
+                        <rect x="46" y="79" width="28" height="24" rx="6" fill="#3B82F6"/>
+                        <!-- 向上箭頭 -->
+                        <path d="M20 55 L20 28 M14 35 L20 28 L26 35" stroke="#10B981" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>`
+            },
+            "拉": {
+                char: "拉",
+                word: "向後拉",
+                example: "兔子又用繩子向後拉。",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <!-- 重物 -->
+                        <rect x="80" y="55" width="30" height="45" rx="6" fill="#64748B" stroke="#334155" stroke-width="3"/>
+                        <!-- 繩子 -->
+                        <line x1="45" y1="72" x2="80" y2="75" stroke="#D97706" stroke-width="5"/>
+                        <!-- 向後傾斜拉繩的人 -->
+                        <circle cx="28" cy="45" r="11" fill="#FDE68A" stroke="#B45309" stroke-width="3"/>
+                        <path d="M32 56 L42 82 L26 100 M42 82 L55 98" stroke="#EC4899" stroke-width="7" stroke-linecap="round" fill="none"/>
+                        <path d="M35 65 L52 72" stroke="#F59E0B" stroke-width="6" stroke-linecap="round"/>
+                        <!-- 向後箭頭 -->
+                        <path d="M62 28 L34 28 M42 21 L34 28 L42 35" stroke="#EF4444" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>`
+            },
+            "挖": {
+                char: "挖",
+                word: "挖土",
+                example: "動物一齊動手，有的挖土。",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <!-- 土堆與坑洞 -->
+                        <path d="M10 95 Q35 72 55 95 Q80 112 110 90 L110 108 L10 108 Z" fill="#92400E"/>
+                        <!-- 鏟子插入土中 -->
+                        <path d="M78 22 L52 76" stroke="#B45309" stroke-width="7" stroke-linecap="round"/>
+                        <path d="M42 70 L62 80 L50 98 L36 90 Z" fill="#94A3B8" stroke="#334155" stroke-width="3"/>
+                        <!-- 飛起的泥土粒 -->
+                        <circle cx="32" cy="62" r="4" fill="#78350F"/>
+                        <circle cx="24" cy="72" r="3" fill="#92400E"/>
+                        <circle cx="40" cy="52" r="3" fill="#B45309"/>
+                      </svg>`
+            },
+            "運": {
+                char: "運",
+                word: "運土",
+                example: "動物一齊動手，有的運土。",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <!-- 手推車運土 -->
+                        <path d="M35 55 Q60 32 85 55 Z" fill="#92400E"/>
+                        <path d="M28 55 L92 55 L82 82 L38 82 Z" fill="#EF4444" stroke="#991B1B" stroke-width="3" stroke-linejoin="round"/>
+                        <path d="M12 48 L32 62" stroke="#475569" stroke-width="6" stroke-linecap="round"/>
+                        <circle cx="82" cy="88" r="12" fill="#334155" stroke="#0F172A" stroke-width="3"/>
+                        <circle cx="82" cy="88" r="4" fill="#CBD5E1"/>
+                        <path d="M42 82 L36 98" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+                      </svg>`
+            },
+            "老鼠": {
+                char: "鼠",
+                word: "小老鼠",
+                example: "小老鼠，你真聰明！",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <path d="M88 85 Q112 75 105 55" fill="none" stroke="#F472B6" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="38" cy="38" r="16" fill="#CBD5E1" stroke="#475569" stroke-width="3.5"/>
+                        <circle cx="38" cy="38" r="9" fill="#FBCFE8"/>
+                        <circle cx="82" cy="38" r="16" fill="#CBD5E1" stroke="#475569" stroke-width="3.5"/>
+                        <circle cx="82" cy="38" r="9" fill="#FBCFE8"/>
+                        <ellipse cx="60" cy="66" rx="30" ry="26" fill="#E2E8F0" stroke="#475569" stroke-width="3.5"/>
+                        <circle cx="50" cy="60" r="4" fill="#1E293B"/>
+                        <circle cx="70" cy="60" r="4" fill="#1E293B"/>
+                        <circle cx="60" cy="72" r="5" fill="#F43F5E"/>
+                        <line x1="25" y1="68" x2="42" y2="70" stroke="#475569" stroke-width="2.5" stroke-linecap="round"/>
+                        <line x1="95" y1="68" x2="78" y2="70" stroke="#475569" stroke-width="2.5" stroke-linecap="round"/>
+                      </svg>`
+            },
+            "兔子": {
+                char: "兔",
+                word: "兔子",
+                example: "兔子想搬走大石頭。",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <ellipse cx="46" cy="32" rx="9" ry="24" fill="#FFFFFF" stroke="#475569" stroke-width="3.5"/>
+                        <ellipse cx="46" cy="32" rx="4" ry="16" fill="#FBCFE8"/>
+                        <ellipse cx="74" cy="32" rx="9" ry="24" fill="#FFFFFF" stroke="#475569" stroke-width="3.5"/>
+                        <ellipse cx="74" cy="32" rx="4" ry="16" fill="#FBCFE8"/>
+                        <circle cx="60" cy="72" r="28" fill="#FFFFFF" stroke="#475569" stroke-width="3.5"/>
+                        <circle cx="50" cy="66" r="4" fill="#1E293B"/>
+                        <circle cx="70" cy="66" r="4" fill="#1E293B"/>
+                        <path d="M55 77 Q60 82 65 77" fill="none" stroke="#F43F5E" stroke-width="3" stroke-linecap="round"/>
+                        <circle cx="60" cy="74" r="3.5" fill="#F43F5E"/>
+                      </svg>`
+            },
+            "大象": {
+                char: "象",
+                word: "大象",
+                example: "牠們請了大象來幫忙，還是提不動。",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <ellipse cx="32" cy="56" rx="14" ry="20" fill="#93C5FD" stroke="#2563EB" stroke-width="3.5"/>
+                        <ellipse cx="88" cy="56" rx="14" ry="20" fill="#93C5FD" stroke="#2563EB" stroke-width="3.5"/>
+                        <circle cx="60" cy="56" r="28" fill="#BFDBFE" stroke="#2563EB" stroke-width="3.5"/>
+                        <path d="M54 64 Q52 95 72 95" fill="none" stroke="#2563EB" stroke-width="10" stroke-linecap="round"/>
+                        <circle cx="48" cy="50" r="4" fill="#1E293B"/>
+                        <circle cx="72" cy="50" r="4" fill="#1E293B"/>
+                      </svg>`
+            },
+            "公路": {
+                char: "路",
+                word: "修公路",
+                example: "動物在一起修公路。",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <rect x="10" y="15" width="100" height="90" rx="16" fill="#DCFCE7"/>
+                        <path d="M42 15 L78 15 L98 105 L22 105 Z" fill="#64748B" stroke="#334155" stroke-width="3"/>
+                        <line x1="60" y1="24" x2="60" y2="96" stroke="#F8FAFC" stroke-width="5" stroke-dasharray="12,10" stroke-linecap="round"/>
+                      </svg>`
+            },
+            "埋進地下": {
+                char: "埋",
+                word: "埋進地下",
+                example: "最後，牠們成功地令大石頭埋進地下啦！",
+                svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+                        <rect x="12" y="55" width="96" height="50" rx="10" fill="#92400E"/>
+                        <path d="M35 88 Q33 62 60 60 Q87 62 85 88 Z" fill="#64748B" stroke="#CBD5E1" stroke-width="2.5" stroke-dasharray="5,4"/>
+                        <path d="M12 55 Q35 45 60 55 Q85 45 108 55" fill="none" stroke="#78350F" stroke-width="6" stroke-linecap="round"/>
+                        <path d="M60 20 L60 44 M51 35 L60 44 L69 35" stroke="#10B981" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>`
+            }
+        };
+
+        // 閱讀組別題庫配置
+        const BASIC_ITEMS = ["石頭", "繩子", "鏟子", "推", "搬", "拉"];
+        const ADV_ITEMS = ["石頭", "繩子", "鏟子", "推", "搬", "拉", "挖", "運", "老鼠", "兔子"];
+
+        // 挑戰題題庫（按課文內容設計6題，每題提供2-3個帶圖片的選項）
+        const CHALLENGE_QUESTIONS = [
+            {
+                q: "1. 動物們在一起做什麼工作？",
+                answer: "公路",
+                options: [
+                    { key: "公路", label: "修公路" },
+                    { key: "鏟子", label: "買鏟子" },
+                    { key: "繩子", label: "跳繩子" }
+                ]
+            },
+            {
+                q: "2. 什麼東西擋在公路中間？",
+                answer: "石頭",
+                options: [
+                    { key: "石頭", label: "巨大的石頭" },
+                    { key: "大象", label: "一隻大象" },
+                    { key: "兔子", label: "一隻兔子" }
+                ]
+            },
+            {
+                q: "3. 兔子除了用手向前推，還用什麼向後拉石頭？",
+                answer: "繩子",
+                options: [
+                    { key: "繩子", label: "用繩子拉" },
+                    { key: "鏟子", label: "用鏟子拉" }
+                ]
+            },
+            {
+                q: "4. 後來動物們請了誰來幫忙，還是提不動石頭？",
+                answer: "大象",
+                options: [
+                    { key: "大象", label: "大象" },
+                    { key: "老鼠", label: "小老鼠" },
+                    { key: "兔子", label: "兔子" }
+                ]
+            },
+            {
+                q: "5. 小老鼠想到辦法後，叫大家拿什麼工具來？",
+                answer: "鏟子",
+                options: [
+                    { key: "鏟子", label: "拿鏟子" },
+                    { key: "繩子", label: "拿繩子" }
+                ]
+            },
+            {
+                q: "6. 最後，動物們用挖土和運土的方法把大石頭怎樣了？",
+                answer: "埋進地下",
+                options: [
+                    { key: "埋進地下", label: "埋進地下" },
+                    { key: "搬", label: "搬走石頭" },
+                    { key: "推", label: "推下山坡" }
+                ]
+            }
+        ];
+
+        // 高組書寫：按難度逐一補寫「土 -> 石 -> 沙」設定
+        const ADV_WRITE_LEVELS = [
+            {
+                char: "土",
+                levelName: "難度一：土",
+                wordTitle: "「土」— 挖土、運土",
+                speakPrompt: "土，挖土、運土的土。請補寫最後一筆長橫。",
+                hint: "提示：請在下方紅色虛線處，補寫最後一筆「長橫」！",
+                // SVG viewBox 200x200：已有短橫與豎畫，缺少底部長橫
+                svg: `<svg viewBox="0 0 200 200" class="w-full h-full">
+                        <!-- 已有筆畫 -->
+                        <line x1="55" y1="78" x2="145" y2="78" stroke="#1E293B" stroke-width="14" stroke-linecap="round"/>
+                        <line x1="100" y1="35" x2="100" y2="155" stroke="#1E293B" stroke-width="14" stroke-linecap="round"/>
+                        <!-- 待補寫筆畫 (紅色虛線) -->
+                        <line x1="30" y1="155" x2="170" y2="155" stroke="#EF4444" stroke-width="12" stroke-dasharray="14,12" stroke-linecap="round"/>
+                      </svg>`
+            },
+            {
+                char: "石",
+                levelName: "難度二：石",
+                wordTitle: "「石」— 石頭、大石頭",
+                speakPrompt: "石，石頭的石。請補寫下面的口字框。",
+                hint: "提示：上面一橫與一撇已經寫好了，請補寫下面的「口」字！",
+                // SVG viewBox 200x200：已有橫、撇，缺少下面的「口」
+                svg: `<svg viewBox="0 0 200 200" class="w-full h-full">
+                        <!-- 已有筆畫：橫、撇 -->
+                        <line x1="38" y1="45" x2="165" y2="45" stroke="#1E293B" stroke-width="14" stroke-linecap="round"/>
+                        <path d="M88 45 Q75 100 35 142" fill="none" stroke="#1E293B" stroke-width="14" stroke-linecap="round"/>
+                        <!-- 待補寫筆畫：口 (紅色虛線) -->
+                        <rect x="76" y="96" width="76" height="64" rx="4" fill="none" stroke="#EF4444" stroke-width="11" stroke-dasharray="14,10"/>
+                      </svg>`
+            },
+            {
+                char: "沙",
+                levelName: "難度三：沙",
+                wordTitle: "「沙」— 沙土、沙石",
+                speakPrompt: "沙，沙土的沙。請補寫左邊的三點水，和右邊最後一長撇。",
+                hint: "提示：請補寫左邊的「三點水」，以及右邊的「長撇」！",
+                // SVG viewBox 200x200：已有右邊「少」的前三畫，缺少左邊三點水與右邊長撇
+                svg: `<svg viewBox="0 0 200 200" class="w-full h-full">
+                        <!-- 已有筆畫：右邊「少」的豎鉤與兩點 -->
+                        <path d="M126 32 L126 108 Q126 118 114 114" fill="none" stroke="#1E293B" stroke-width="13" stroke-linecap="round"/>
+                        <path d="M98 62 L84 88" fill="none" stroke="#1E293B" stroke-width="13" stroke-linecap="round"/>
+                        <path d="M152 60 L170 86" fill="none" stroke="#1E293B" stroke-width="13" stroke-linecap="round"/>
+                        <!-- 待補寫筆畫：三點水 + 長撇 (紅色虛線) -->
+                        <line x1="42" y1="44" x2="56" y2="56" stroke="#EF4444" stroke-width="11" stroke-dasharray="10,8" stroke-linecap="round"/>
+                        <line x1="34" y1="86" x2="48" y2="98" stroke="#EF4444" stroke-width="11" stroke-dasharray="10,8" stroke-linecap="round"/>
+                        <line x1="38" y1="158" x2="56" y2="126" stroke="#EF4444" stroke-width="11" stroke-dasharray="10,8" stroke-linecap="round"/>
+                        <path d="M162 102 Q132 146 76 170" fill="none" stroke="#EF4444" stroke-width="11" stroke-dasharray="14,10" stroke-linecap="round"/>
+                      </svg>`
+            }
+        ];
+
+        // ==========================================
+        // 2. 全域遊戲狀態
+        // ==========================================
+        let stars = 0;
+        let listenCompleted = false;
+        let isSpeakingStory = false;
+        let currentSentenceIdx = 0;
+
+        // 閱讀任務狀態
+        let currentReadGroup = 'basic'; // 'basic' | 'adv' | 'challenge'
+        let readQueue = [];
+        let readCurrentIndex = 0;
+        let readLocked = false;
+
+        // 書寫任務狀態
+        let currentWriteGroup = 'basic'; // 'basic' (塗一塗) | 'adv' (補寫)
+        let currentColorItem = '石頭';
+        let currentColorHex = '#64748B';
+        let isEraserMode = false;
+        let isColoring = false;
+        let coloredItemsDone = new Set();
+
+        let currentAdvLevelIdx = 0;
+        let isDrawing = false;
+        let brushColor = '#DC2626';
+        let completedAdvChars = new Set();
+
+        // ==========================================
+        // 3. 音效與語音合成系統 (Web Audio & SpeechSynthesis)
+        // ==========================================
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playTone(freq, type = 'sine', duration = 0.2, delay = 0) {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + delay);
+                osc.stop(audioCtx.currentTime + delay + duration);
+            } catch (e) { console.warn(e); }
+        }
+
+        // 聽聲辨位提示音（清脆風鈴聲）
+        function playAttentionChime() {
+            playTone(523.25, 'sine', 0.3, 0);     // C5
+            playTone(659.25, 'sine', 0.3, 0.15);  // E5
+            playTone(783.99, 'sine', 0.5, 0.3);   // G5
+        }
+
+        function playSuccessSound() {
+            playTone(587.33, 'triangle', 0.15, 0);    // D5
+            playTone(739.99, 'triangle', 0.15, 0.12); // F#5
+            playTone(880.00, 'triangle', 0.35, 0.24); // A5
+        }
+
+        function playErrorSound() {
+            playTone(220, 'sawtooth', 0.2, 0);
+            playTone(185, 'sawtooth', 0.25, 0.15);
+        }
+
+        // 取得最佳繁體中文語音（優先粵語或國語自然女聲）
+        function getBestChineseVoice() {
+            const voices = window.speechSynthesis.getVoices();
+            return voices.find(v => v.lang.includes('zh-HK')) ||
+                   voices.find(v => v.lang.includes('zh-TW')) ||
+                   voices.find(v => v.lang.includes('zh')) ||
+                   null;
+        }
+
+        function speakText(text, rate = 0.9, onEndCallback = null) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voice = getBestChineseVoice();
+            if (voice) utterance.voice = voice;
+            utterance.lang = voice ? voice.lang : 'zh-HK';
+            utterance.rate = rate;
+            utterance.pitch = 1.1; // 親切柔和音調
+            if (onEndCallback) {
+                utterance.onend = onEndCallback;
+                utterance.onerror = onEndCallback;
+            }
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // ==========================================
+        // 4. 分頁切換與獎勵系統
+        // ==========================================
+        function switchTab(tabName) {
+            stopStorySpeech();
+            ['listen', 'read', 'write'].forEach(t => {
+                const sec = document.getElementById(`section-${t}`);
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tabName) {
+                    sec.classList.remove('hidden');
+                    btn.className = "btn-game px-3 sm:px-4 py-2 rounded-2xl font-bold text-sm sm:text-base flex items-center gap-1.5 bg-amber-400 text-amber-950 border-2 border-amber-500";
+                } else {
+                    sec.classList.add('hidden');
+                    btn.className = "btn-game px-3 sm:px-4 py-2 rounded-2xl font-bold text-sm sm:text-base flex items-center gap-1.5 bg-white text-slate-600 border-2 border-slate-200 hover:bg-slate-50";
+                }
+            });
+
+            if (tabName === 'read') {
+                initReadQuestion();
+            } else if (tabName === 'write') {
+                setTimeout(() => {
+                    resizeColorCanvas();
+                    resizeCanvas();
+                }, 50);
+            }
+        }
+
+        function addStars(amount) {
+            stars += amount;
+            const starEl = document.getElementById('star-count');
+            starEl.textContent = stars;
+            starEl.parentElement.classList.add('scale-110');
+            setTimeout(() => starEl.parentElement.classList.remove('scale-110'), 250);
+        }
+
+        function showModal(emoji, title, message) {
+            document.getElementById('modal-emoji').textContent = emoji;
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            const modal = document.getElementById('feedback-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('feedback-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // ==========================================
+        // 5. 任務一：聆聽任務邏輯
+        // ==========================================
+        function renderStorySentences() {
+            const container = document.getElementById('story-container');
+            container.innerHTML = STORY_SENTENCES.map((sentence, idx) => `
+                <p id="sentence-${idx}" 
+                   onclick="speakSingleSentence(${idx})"
+                   class="cursor-pointer px-3 py-1.5 rounded-xl transition-all duration-300 hover:bg-amber-200/60 border-l-4 border-transparent">
+                   ${sentence}
+                </p>
+            `).join('');
+        }
+
+        function highlightSentence(idx) {
+            STORY_SENTENCES.forEach((_, i) => {
+                const el = document.getElementById(`sentence-${i}`);
+                if (!el) return;
+                if (i === idx) {
+                    el.classList.add('bg-amber-200', 'text-amber-950', 'border-amber-500', 'scale-[1.01]', 'shadow-xs');
+                } else {
+                    el.classList.remove('bg-amber-200', 'text-amber-950', 'border-amber-500', 'scale-[1.01]', 'shadow-xs');
+                }
+            });
+            // 故事插畫小動畫互動
+            const rock = document.getElementById('story-rock');
+            if (rock) {
+                if (idx >= 6) {
+                    rock.style.transform = 'translateY(38px)'; // 石頭埋進地下
+                } else {
+                    rock.style.transform = 'translateY(0px)';
+                }
+            }
+        }
+
+        function speakSingleSentence(idx) {
+            stopStorySpeech();
+            const rate = parseFloat(document.getElementById('speech-rate').value);
+            highlightSentence(idx);
+            document.getElementById('audio-wave').classList.remove('hidden');
+            document.getElementById('audio-wave').classList.add('flex');
+            speakText(STORY_SENTENCES[idx], rate, () => {
+                document.getElementById('audio-wave').classList.add('hidden');
+                document.getElementById('audio-wave').classList.remove('flex');
+            });
+        }
+
+        function toggleStorySpeech() {
+            if (isSpeakingStory) {
+                stopStorySpeech();
+                return;
+            }
+            isSpeakingStory = true;
+            currentSentenceIdx = 0;
+            updatePlayButtonUI(true);
+            playNextStorySentence();
+        }
+
+        function playNextStorySentence() {
+            if (!isSpeakingStory) return;
+            if (currentSentenceIdx >= STORY_SENTENCES.length) {
+                stopStorySpeech();
+                if (!listenCompleted) {
+                    listenCompleted = true;
+                    addStars(3);
+                    playSuccessSound();
+                    document.getElementById('listen-status').innerHTML = "✅ <span class='text-emerald-600'>太棒了！你已經專心聽完整篇課文，獲得 3 顆星星！</span>";
+                    showModal("🎧⭐", "聆聽任務完成！", "你真專心！成功聽完整篇《會動腦筋的小老鼠》，獲得 3 顆星星！");
+                }
+                return;
+            }
+
+            const rate = parseFloat(document.getElementById('speech-rate').value);
+            highlightSentence(currentSentenceIdx);
+            const textToSpeak = currentSentenceIdx === 0 
+                ? "會動腦筋的小老鼠。" + STORY_SENTENCES[0] 
+                : STORY_SENTENCES[currentSentenceIdx];
+
+            speakText(textToSpeak, rate, () => {
+                if (isSpeakingStory) {
+                    currentSentenceIdx++;
+                    setTimeout(playNextStorySentence, 350);
+                }
+            });
+        }
+
+        function stopStorySpeech() {
+            isSpeakingStory = false;
+            window.speechSynthesis.cancel();
+            updatePlayButtonUI(false);
+            highlightSentence(-1);
+        }
+
+        function updatePlayButtonUI(playing) {
+            const btn = document.getElementById('btn-play-story');
+            const icon = document.getElementById('play-icon');
+            const text = document.getElementById('play-text');
+            const wave = document.getElementById('audio-wave');
+
+            if (playing) {
+                btn.classList.replace('bg-emerald-500', 'bg-amber-500');
+                icon.textContent = "⏸️";
+                text.textContent = "正在朗讀課文...";
+                wave.classList.remove('hidden');
+                wave.classList.add('flex');
+            } else {
+                btn.classList.replace('bg-amber-500', 'bg-emerald-500');
+                icon.textContent = "▶️";
+                text.textContent = "播放完整課文";
+                wave.classList.add('hidden');
+                wave.classList.remove('flex');
+            }
+        }
+
+        function completeListening() {
+            if (!listenCompleted) {
+                listenCompleted = true;
+                addStars(3);
+                playSuccessSound();
+            }
+            switchTab('read');
+        }
+
+        // ==========================================
+        // 6. 任務二：閱讀任務邏輯 (初組 & 高組)
+        // ==========================================
+        function shuffleArray(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        function setReadGroup(group) {
+            currentReadGroup = group;
+            const groups = ['basic', 'adv', 'challenge'];
+            groups.forEach(g => {
+                const btn = document.getElementById(`btn-group-${g}`);
+                if (!btn) return;
+                if (g === group) {
+                    btn.className = "flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all bg-emerald-500 text-white shadow";
+                } else {
+                    btn.className = "flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all text-slate-600 hover:bg-white/60";
+                }
+            });
+            resetCurrentReadGroup();
+        }
+
+        function resetCurrentReadGroup() {
+            if (currentReadGroup === 'basic') {
+                readQueue = shuffleArray(BASIC_ITEMS);
+            } else if (currentReadGroup === 'adv') {
+                readQueue = shuffleArray(ADV_ITEMS);
+            } else {
+                readQueue = [...CHALLENGE_QUESTIONS]; // 挑戰題依故事順序呈現6題
+            }
+            readCurrentIndex = 0;
+            document.getElementById('read-game-board').classList.remove('hidden');
+            document.getElementById('read-complete-board').classList.add('hidden');
+            initReadQuestion();
+        }
+
+        function initReadQuestion() {
+            readLocked = false;
+            const total = readQueue.length;
+            if (readCurrentIndex >= total) {
+                showReadGroupComplete();
+                return;
+            }
+
+            document.getElementById('read-progress-text').textContent = `第 ${readCurrentIndex + 1} / ${total} 題`;
+
+            const basicBox = document.getElementById('basic-prompt-box');
+            const advBox = document.getElementById('adv-prompt-box');
+            const challengeBox = document.getElementById('challenge-prompt-box');
+            const badge = document.getElementById('read-mode-badge');
+            const grid = document.getElementById('read-options-grid');
+
+            basicBox.classList.add('hidden');
+            advBox.classList.add('hidden');
+            advBox.classList.remove('flex');
+            challengeBox.classList.add('hidden');
+            challengeBox.classList.remove('flex');
+
+            // 情況 A：挑戰題（6題課文理解，2-3個帶圖選項）
+            if (currentReadGroup === 'challenge') {
+                const qObj = readQueue[readCurrentIndex];
+                badge.textContent = "🏆 挑戰題：根據課文內容，選出正確的答案";
+                challengeBox.classList.remove('hidden');
+                challengeBox.classList.add('flex');
+                document.getElementById('challenge-question-text').textContent = qObj.q;
+
+                // 依據選項數量調整網格欄數 (2欄 或 3欄)
+                grid.className = qObj.options.length === 2
+                    ? "grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-2xl mx-auto pt-2"
+                    : "grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 max-w-3xl mx-auto pt-2";
+
+                grid.innerHTML = qObj.options.map(opt => {
+                    const item = VOCAB_DATA[opt.key];
+                    return `
+                        <button onclick="checkReadAnswer('${opt.key}', this)" 
+                                class="btn-game bg-slate-50 hover:bg-amber-50 border-4 border-slate-200 hover:border-amber-400 rounded-3xl p-4 sm:p-5 flex flex-col items-center justify-center transition-all">
+                            <div class="w-24 h-24 sm:w-28 sm:h-28 pointer-events-none">
+                                ${item.svg}
+                            </div>
+                            <span class="mt-2 font-black text-lg sm:text-xl text-slate-800">${opt.label}</span>
+                        </button>
+                    `;
+                }).join('');
+
+                setTimeout(() => speakCurrentChallengeQuestion(), 300);
+                return;
+            }
+
+            // 情況 B & C：初組圖配圖 / 高組聽詞配圖 (4個選項)
+            grid.className = "grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 max-w-4xl mx-auto pt-2";
+            const targetKey = readQueue[readCurrentIndex];
+            const targetData = VOCAB_DATA[targetKey];
+
+            if (currentReadGroup === 'basic') {
+                badge.textContent = "🌱 初組圖配圖：請選出與上方一模一樣的圖片";
+                basicBox.classList.remove('hidden');
+                document.getElementById('basic-target-svg').innerHTML = targetData.svg;
+                document.getElementById('basic-target-label').textContent = targetKey;
+            } else {
+                badge.textContent = "🌳 高組聽詞配圖：聽一聽詞語，選出正確的圖片";
+                advBox.classList.remove('hidden');
+                advBox.classList.add('flex');
+                setTimeout(() => speakCurrentTargetWord(), 300);
+            }
+
+            // 產生 4 個選項（1 個正確 + 3 個干擾項）
+            const pool = (currentReadGroup === 'basic' ? BASIC_ITEMS : ADV_ITEMS).filter(k => k !== targetKey);
+            const distractors = shuffleArray(pool).slice(0, 3);
+            const options = shuffleArray([targetKey, ...distractors]);
+
+            grid.innerHTML = options.map(optKey => {
+                const item = VOCAB_DATA[optKey];
+                const labelHtml = currentReadGroup === 'basic' 
+                    ? `<span class="mt-2 font-black text-lg sm:text-xl text-slate-700">${optKey}</span>` 
+                    : `<span class="mt-2 font-bold text-xs text-slate-400">點擊選擇</span>`;
+
+                return `
+                    <button onclick="checkReadAnswer('${optKey}', this)" 
+                            class="btn-game bg-slate-50 hover:bg-amber-50 border-4 border-slate-200 hover:border-amber-400 rounded-3xl p-4 sm:p-5 flex flex-col items-center justify-center transition-all">
+                        <div class="w-24 h-24 sm:w-28 sm:h-28 pointer-events-none">
+                            ${item.svg}
+                        </div>
+                        ${labelHtml}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function speakCurrentChallengeQuestion() {
+            const qObj = readQueue[readCurrentIndex];
+            if (qObj && qObj.q) {
+                // 去除題號數字，朗讀更自然
+                const cleanQ = qObj.q.replace(/^\d+\.\s*/, '');
+                speakText(cleanQ, 0.9);
+            }
+        }
+
+        function speakCurrentTargetWord() {
+            const targetKey = readQueue[readCurrentIndex];
+            if (targetKey) {
+                speakText(targetKey, 0.85);
+            }
+        }
+
+        function checkReadAnswer(selectedKey, btnEl) {
+            if (readLocked) return;
+            const currentItem = readQueue[readCurrentIndex];
+            const targetKey = currentReadGroup === 'challenge' ? currentItem.answer : currentItem;
+
+            if (selectedKey === targetKey) {
+                readLocked = true;
+                playSuccessSound();
+                addStars(1);
+                btnEl.classList.remove('bg-slate-50', 'border-slate-200');
+                btnEl.classList.add('bg-emerald-100', 'border-emerald-500', 'scale-105');
+                
+                const spokenFeedback = currentReadGroup === 'challenge'
+                    ? `答對了！${currentItem.options.find(o => o.key === selectedKey).label}`
+                    : `答對了！${targetKey}`;
+                speakText(spokenFeedback, 0.95);
+
+                setTimeout(() => {
+                    readCurrentIndex++;
+                    initReadQuestion();
+                }, 1200);
+            } else {
+                playErrorSound();
+                btnEl.classList.add('animate-shake', 'bg-rose-100', 'border-rose-400');
+                speakText("再試一次喔！", 0.95);
+                setTimeout(() => {
+                    btnEl.classList.remove('animate-shake', 'bg-rose-100', 'border-rose-400');
+                }, 500);
+            }
+        }
+
+        function showReadGroupComplete() {
+            playSuccessSound();
+            addStars(3);
+            document.getElementById('read-game-board').classList.add('hidden');
+            const completeBoard = document.getElementById('read-complete-board');
+            completeBoard.classList.remove('hidden');
+
+            const title = document.getElementById('read-complete-title');
+            const nextAdvBtn = document.getElementById('btn-next-adv');
+            const nextChallengeBtn = document.getElementById('btn-next-challenge');
+
+            if (currentReadGroup === 'basic') {
+                title.textContent = "🎉 太棒了！你完成了「初組：圖配圖」！";
+                nextAdvBtn.classList.remove('hidden');
+                nextChallengeBtn.classList.remove('hidden');
+            } else if (currentReadGroup === 'adv') {
+                title.textContent = "🌟 掌聲鼓勵！你完成了「高組：聽詞配圖」！";
+                nextAdvBtn.classList.add('hidden');
+                nextChallengeBtn.classList.remove('hidden');
+            } else {
+                title.textContent = "🏆 滿分過關！你完成了「6題課文挑戰題」！";
+                nextAdvBtn.classList.add('hidden');
+                nextChallengeBtn.classList.add('hidden');
+            }
+        }
+
+        // ==========================================
+        // 7. 任務三：書寫任務 (初組塗一塗 & 高組補寫)
+        // ==========================================
+        const colorCanvas = document.getElementById('color-canvas');
+        const colorCtx = colorCanvas.getContext('2d');
+        const canvas = document.getElementById('write-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 切換書寫任務組別
+        function setWriteGroup(group) {
+            currentWriteGroup = group;
+            const btnBasic = document.getElementById('btn-write-basic');
+            const btnAdv = document.getElementById('btn-write-adv');
+            const basicBoard = document.getElementById('write-basic-board');
+            const advBoard = document.getElementById('write-adv-board');
+            const badge = document.getElementById('write-instruction-badge');
+
+            if (group === 'basic') {
+                btnBasic.className = "flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all bg-sky-500 text-white shadow";
+                btnAdv.className = "flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all text-slate-600 hover:bg-white/60";
+                basicBoard.classList.remove('hidden');
+                advBoard.classList.add('hidden');
+                badge.textContent = "在「石頭」和「繩子」的框線內，用手指填上顏色！";
+                setTimeout(resizeColorCanvas, 30);
+            } else {
+                btnAdv.className = "flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all bg-sky-500 text-white shadow";
+                btnBasic.className = "flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-sm sm:text-base transition-all text-slate-600 hover:bg-white/60";
+                basicBoard.classList.add('hidden');
+                advBoard.classList.remove('hidden');
+                badge.textContent = "先聽字音，再按難度逐一補寫「土、石、沙」！";
+                setTimeout(() => {
+                    resizeCanvas();
+                    selectAdvWriteLevel(currentAdvLevelIdx);
+                }, 30);
+            }
+        }
+
+        // --- 初組書寫：塗一塗邏輯 (石頭 & 繩子框線內填色 + 橡皮擦) ---
+        function selectColoringItem(item) {
+            currentColorItem = item;
+            const btnStone = document.getElementById('btn-color-item-stone');
+            const btnRope = document.getElementById('btn-color-item-rope');
+
+            if (item === '石頭') {
+                btnStone.className = "btn-game px-5 py-2.5 rounded-2xl font-black text-base sm:text-lg border-2 bg-amber-400 text-amber-950 border-amber-500 flex items-center gap-2";
+                btnRope.className = "btn-game px-5 py-2.5 rounded-2xl font-black text-base sm:text-lg border-2 bg-white text-slate-700 border-slate-200 hover:bg-amber-50 flex items-center gap-2";
+                setColorTool('#64748B', false); // 預設石頭灰
+            } else {
+                btnRope.className = "btn-game px-5 py-2.5 rounded-2xl font-black text-base sm:text-lg border-2 bg-amber-400 text-amber-950 border-amber-500 flex items-center gap-2";
+                btnStone.className = "btn-game px-5 py-2.5 rounded-2xl font-black text-base sm:text-lg border-2 bg-white text-slate-700 border-slate-200 hover:bg-amber-50 flex items-center gap-2";
+                setColorTool('#D97706', false); // 預設繩子棕
+            }
+
+            renderColorOutlineOverlay();
+            clearColorCanvas();
+            speakText(`請幫${item}塗上顏色`, 0.9);
+        }
+
+        function renderColorOutlineOverlay() {
+            const overlay = document.getElementById('color-outline-overlay');
+            if (currentColorItem === '石頭') {
+                overlay.innerHTML = `
+                    <svg viewBox="0 0 300 300" class="w-full h-full">
+                        <path d="M45 235 Q35 95 148 75 Q260 65 265 235 Z" fill="none" stroke="#1E293B" stroke-width="8" stroke-linejoin="round"/>
+                        <path d="M90 130 Q135 110 175 135" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+                    </svg>`;
+            } else {
+                // 粗繩子封閉輪廓框線
+                overlay.innerHTML = `
+                    <svg viewBox="0 0 300 300" class="w-full h-full">
+                        <path d="M55 215 C30 135, 135 55, 220 110 C275 145, 195 245, 110 190 C70 165, 135 95, 245 55" 
+                              fill="none" stroke="#1E293B" stroke-width="34" stroke-linecap="round"/>
+                        <path d="M55 215 C30 135, 135 55, 220 110 C275 145, 195 245, 110 190 C70 165, 135 95, 245 55" 
+                              fill="none" stroke="#FFFDF7" stroke-width="22" stroke-linecap="round" opacity="0.25"/>
+                    </svg>`;
+            }
+        }
+
+        // 建立框線內部裁切路徑，確保學生手指塗色都在框線內
+        function applyItemClipPath(context, w, h) {
+            const scaleX = w / 300;
+            const scaleY = h / 300;
+            context.save();
+            context.scale(scaleX, scaleY);
+            if (currentColorItem === '石頭') {
+                const p = new Path2D("M45 235 Q35 95 148 75 Q260 65 265 235 Z");
+                context.clip(p);
+            } else {
+                // 繩子粗路徑區域
+                context.lineCap = 'round';
+                context.lineWidth = 26;
+                const p = new Path2D("M55 215 C30 135, 135 55, 220 110 C275 145, 195 245, 110 190 C70 165, 135 95, 245 55");
+                context.strokeStyle = 'rgba(0,0,0,0)';
+                // 使用寬筆觸模擬繩子內部區域
+            }
+            context.restore();
+        }
+
+        function setColorTool(hex, eraser) {
+            isEraserMode = eraser;
+            currentColorHex = hex;
+            const btnEraser = document.getElementById('btn-eraser');
+
+            document.querySelectorAll('.color-swatch').forEach(sw => {
+                if (!eraser && sw.dataset.color === hex) {
+                    sw.classList.add('ring-4', 'ring-sky-400', 'scale-105');
+                } else {
+                    sw.classList.remove('ring-4', 'ring-sky-400', 'scale-105');
+                }
+            });
+
+            if (eraser) {
+                btnEraser.className = "btn-game w-full py-3 px-4 rounded-2xl font-black text-base border-2 bg-rose-500 text-white border-rose-600 flex items-center justify-center gap-2 shadow-md";
+            } else {
+                btnEraser.className = "btn-game w-full py-3 px-4 rounded-2xl font-black text-base border-2 bg-white text-slate-700 border-slate-300 hover:bg-rose-50 flex items-center justify-center gap-2";
+            }
+        }
+
+        function resizeColorCanvas() {
+            const rect = colorCanvas.parentElement.getBoundingClientRect();
+            if (rect.width === 0) return;
+            colorCanvas.width = rect.width;
+            colorCanvas.height = rect.height;
+        }
+
+        function clearColorCanvas() {
+            colorCtx.clearRect(0, 0, colorCanvas.width, colorCanvas.height);
+        }
+
+        function getRelCoords(e, targetCanvas) {
+            const rect = targetCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function startColoring(e) {
+            e.preventDefault();
+            isColoring = true;
+            const pos = getRelCoords(e, colorCanvas);
+            drawColorStroke(pos.x, pos.y, pos.x, pos.y);
+            colorCanvas.lastPos = pos;
+        }
+
+        function moveColoring(e) {
+            if (!isColoring) return;
+            e.preventDefault();
+            const pos = getRelCoords(e, colorCanvas);
+            const last = colorCanvas.lastPos || pos;
+            drawColorStroke(last.x, last.y, pos.x, pos.y);
+            colorCanvas.lastPos = pos;
+        }
+
+        function drawColorStroke(x1, y1, x2, y2) {
+            const w = colorCanvas.width;
+            const h = colorCanvas.height;
+            colorCtx.save();
+
+            // 限制塗色範圍在框線內
+            if (currentColorItem === '石頭') {
+                colorCtx.save();
+                colorCtx.scale(w / 300, h / 300);
+                const stoneClip = new Path2D("M45 235 Q35 95 148 75 Q260 65 265 235 Z");
+                colorCtx.clip(stoneClip);
+                colorCtx.restore();
+            }
+
+            colorCtx.lineCap = 'round';
+            colorCtx.lineJoin = 'round';
+            colorCtx.lineWidth = isEraserMode ? 28 : 24;
+
+            if (isEraserMode) {
+                colorCtx.globalCompositeOperation = 'destination-out';
+                colorCtx.strokeStyle = 'rgba(0,0,0,1)';
+            } else {
+                colorCtx.globalCompositeOperation = 'source-over';
+                colorCtx.strokeStyle = currentColorHex;
+            }
+
+            colorCtx.beginPath();
+            colorCtx.moveTo(x1, y1);
+            colorCtx.lineTo(x2, y2);
+            colorCtx.stroke();
+
+            // 若為繩子，使用遮罩保留框線內顏色，自動清除框線外溢出的筆跡
+            if (currentColorItem === '繩子') {
+                colorCtx.globalCompositeOperation = 'destination-in';
+                colorCtx.save();
+                colorCtx.scale(w / 300, h / 300);
+                colorCtx.lineCap = 'round';
+                colorCtx.lineWidth = 26;
+                colorCtx.strokeStyle = '#000000';
+                const ropeMask = new Path2D("M55 215 C30 135, 135 55, 220 110 C275 145, 195 245, 110 190 C70 165, 135 95, 245 55");
+                colorCtx.stroke(ropeMask);
+                colorCtx.restore();
+            }
+
+            colorCtx.restore();
+        }
+
+        function endColoring() {
+            isColoring = false;
+        }
+
+        colorCanvas.addEventListener('mousedown', startColoring);
+        colorCanvas.addEventListener('mousemove', moveColoring);
+        window.addEventListener('mouseup', endColoring);
+        colorCanvas.addEventListener('touchstart', startColoring, { passive: false });
+        colorCanvas.addEventListener('touchmove', moveColoring, { passive: false });
+        colorCanvas.addEventListener('touchend', endColoring);
+
+        function submitColoring() {
+            const pixelData = colorCtx.getImageData(0, 0, colorCanvas.width, colorCanvas.height).data;
+            let coloredPixels = 0;
+            for (let i = 3; i < pixelData.length; i += 4) {
+                if (pixelData[i] > 0) coloredPixels++;
+            }
+
+            if (coloredPixels < 150) {
+                playErrorSound();
+                showModal("🎨", "還沒有塗滿喔！", `請用手指在「${currentColorItem}」的框線內多塗一點顏色吧！`);
+                return;
+            }
+
+            playSuccessSound();
+            if (!coloredItemsDone.has(currentColorItem)) {
+                coloredItemsDone.add(currentColorItem);
+                addStars(2);
+            }
+            speakText(`好漂亮！你把${currentColorItem}塗得真整齊！`, 0.95);
+            showModal("🎨⭐", `「${currentColorItem}」塗色完成！`, `你把顏色穩穩地塗在框線裡面，真棒！`);
+        }
+
+        // --- 高組書寫：聽字音，按難度逐一補寫「土、石、沙」 ---
+        function selectAdvWriteLevel(idx) {
+            currentAdvLevelIdx = idx;
+            const levelData = ADV_WRITE_LEVELS[idx];
+
+            ADV_WRITE_LEVELS.forEach((lv, i) => {
+                const btn = document.getElementById(`btn-adv-char-${i}`);
+                const doneMark = completedAdvChars.has(lv.char) ? " ✅" : "";
+                if (i === idx) {
+                    btn.className = "btn-game px-4 py-2.5 rounded-2xl font-black text-sm sm:text-base border-2 bg-sky-500 text-white border-sky-600 flex items-center gap-1.5 shrink-0";
+                } else {
+                    btn.className = "btn-game px-4 py-2.5 rounded-2xl font-black text-sm sm:text-base border-2 bg-slate-50 text-slate-700 border-slate-200 hover:bg-sky-50 flex items-center gap-1.5 shrink-0";
+                }
+                btn.innerHTML = `<span>${'⭐'.repeat(i + 1)} ${lv.levelName}${doneMark}</span>`;
+            });
+
+            document.getElementById('adv-write-word-title').textContent = levelData.wordTitle;
+            document.getElementById('adv-write-hint-text').textContent = levelData.hint;
+            document.getElementById('adv-stroke-svg-layer').innerHTML = levelData.svg;
+
+            clearCanvas();
+            speakAdvWritePrompt();
+        }
+
+        function speakAdvWritePrompt() {
+            const levelData = ADV_WRITE_LEVELS[currentAdvLevelIdx];
+            if (levelData) {
+                speakText(levelData.speakPrompt, 0.88);
+            }
+        }
+
+        function setBrushColor(color) {
+            brushColor = color;
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                if (btn.dataset.color === color) {
+                    btn.classList.add('ring-2', 'ring-sky-400', 'scale-110');
+                } else {
+                    btn.classList.remove('ring-2', 'ring-sky-400', 'scale-110');
+                }
+            });
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            if (rect.width === 0) return;
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = Math.max(12, rect.width / 20);
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function startDraw(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getRelCoords(e, canvas);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            ctx.strokeStyle = brushColor;
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getRelCoords(e, canvas);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function endDraw() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            ctx.closePath();
+        }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        window.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('touchstart', startDraw, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', endDraw);
+
+        function submitAdvWriting() {
+            const pixelData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            let hasInk = false;
+            for (let i = 3; i < pixelData.length; i += 4) {
+                if (pixelData[i] > 0) {
+                    hasInk = true;
+                    break;
+                }
+            }
+
+            const levelData = ADV_WRITE_LEVELS[currentAdvLevelIdx];
+            if (!hasInk) {
+                playErrorSound();
+                showModal("✍️", "還沒有補寫筆畫喔！", `請沿著紅色虛線，把「${levelData.char}」字缺少的筆畫補寫完整！`);
+                return;
+            }
+
+            playSuccessSound();
+            if (!completedAdvChars.has(levelData.char)) {
+                completedAdvChars.add(levelData.char);
+                addStars(2);
+            }
+            selectAdvWriteLevel(currentAdvLevelIdx);
+            speakText(`太棒了！你成功補寫了「${levelData.char}」字！`, 0.95);
+
+            if (currentAdvLevelIdx < ADV_WRITE_LEVELS.length - 1) {
+                showModal("🌟✍️", `「${levelData.char}」字補寫成功！`, `寫得真工整！接下來挑戰下一個難度吧！`);
+                setTimeout(() => selectAdvWriteLevel(currentAdvLevelIdx + 1), 600);
+            } else {
+                showModal("🏆🎉", "高組書寫全部通關！", "你已經成功聽音並補寫完成「土、石、沙」三個生字，太厲害了！");
+            }
+        }
+
+        // ==========================================
+        // 8. 網頁初始化
+        // ==========================================
+        window.addEventListener('resize', () => {
+            resizeColorCanvas();
+            resizeCanvas();
+        });
+        window.speechSynthesis.onvoiceschanged = () => getBestChineseVoice();
+
+        window.onload = function() {
+            renderStorySentences();
+            resetCurrentReadGroup();
+            selectColoringItem('石頭');
+            resizeColorCanvas();
+            resizeCanvas();
+        };
+    </script>
+</body>
+</html>
